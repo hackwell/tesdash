@@ -22,6 +22,7 @@ const plusIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 
 	<body>
 		<main>
+			<section class="calendar" id="calendar" hidden aria-label="Termine heute"></section>
 			<section class="home" id="home" hidden aria-label="Zuhause">
 				<div class="home-status" id="home-status"></div>
 				<div class="home-tiles" id="home-tiles"></div>
@@ -113,7 +114,9 @@ const plusIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 
 		<script>
 			import { initDashboard } from '../lib/dashboard';
+			import { initCalendarBar } from '../lib/calendar-bar';
 			import { initHomeBar } from '../lib/home-bar';
+			initCalendarBar();
 			initHomeBar();
 			initDashboard();
 		</script>

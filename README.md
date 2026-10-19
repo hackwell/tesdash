@@ -19,6 +19,10 @@ so every device sees the same dashboard.
   (see `home.example.json`). Only the listed entities are exposed; covers open/close, lights and switches toggle.
   Tiles with `hold` need a long press, tiles with `geofenceMeters` only act when the browser's position (the car's
   GPS) is that close to HA's home location. Needs `HA_URL` and `HA_TOKEN`; without them the bar is hidden.
+- Calendar bar (optional): today's meetings from `CALENDAR_FILE` (JSON written by an external exporter, see
+  `deploy/calendar-export.py`, which reads Outlook via Microsoft Graph). The next meeting gets a countdown and a
+  join button; Teams links are rewritten to the web launcher with `msLaunch=false&suppressPrompt=true`, so a tap
+  joins in the browser instead of asking for the desktop app.
 - Layout targets the car browser's 773 × 601 split view (Chromium 148, DPR 1.53, reports `hover` although it is a
   touchscreen): flat cards, no blur or hover effects, 48 px touch targets.
 - There is no login. Put the server behind an authenticating reverse proxy (here: Authentik forward auth).
@@ -40,6 +44,7 @@ On first start the state is seeded from `src/data/config.yml`, keeping apps avai
 | `SEED_REGION` | `DE` | country filter for the first seed |
 | `HOME_CONFIG` | `/app/home.json` | house tiles and status entities |
 | `HA_URL`, `HA_TOKEN` | – | Home Assistant base URL and long-lived token |
+| `CALENDAR_FILE` | `/calendar/today.json` | today's meetings, written by the exporter |
 
 ## Develop
 

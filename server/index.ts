@@ -16,6 +16,10 @@ const MAX_BODY_BYTES = 1024 * 1024;
 const HOME_CONFIG = process.env.HOME_CONFIG ?? '/app/home.json';
 const HA_URL = process.env.HA_URL ?? '';
 const HA_TOKEN = process.env.HA_TOKEN ?? '';
+// Written by calendar-export.py (runs as Wellbot on the host), mounted read-only.
+const CALENDAR_FILE = process.env.CALENDAR_FILE ?? '/calendar/today.json';
+const CALENDAR_STALE_MS = 10 * 60 * 1000;
+const berlinDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin' });
 
 interface StoredState extends DashboardState {
 	revision: number;
@@ -113,6 +117,23 @@ async function handleApi(req: Request, path: string): Promise<Response> {
 			return json(state);
 		} catch (err) {
 			return json({ error: (err as Error).message }, 400);
+		}
+	}
+
+	if (path === '/api/calendar' && req.method === 'GET') {
+		if (!existsSync(CALENDAR_FILE)) return json({ enabled: false });
+		try {
+			const cal = JSON.parse(readFileSync(CALENDAR_FILE, 'utf-8'));
+			const today = cal.date === berlinDate.format(new Date());
+			return json({
+				enabled: true,
+				generatedAt: cal.generatedAt,
+				stale: !today || Date.now() - Date.parse(cal.generatedAt) > CALENDAR_STALE_MS,
+				errors: cal.errors ?? [],
+				events: today ? cal.events : [],
+			});
+		} catch {
+			return json({ enabled: true, stale: true, errors: ['export'], events: [] });
 		}
 	}
 

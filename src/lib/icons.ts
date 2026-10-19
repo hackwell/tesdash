@@ -39,7 +39,7 @@ const STATUS_ICONS: Record<string, string> = {
 	temperature: mdiThermometer,
 };
 
-function svg(path: string, className: string): SVGSVGElement {
+export function iconSvg(path: string, className: string): SVGSVGElement {
 	const ns = 'http://www.w3.org/2000/svg';
 	const icon = document.createElementNS(ns, 'svg');
 	icon.setAttribute('viewBox', '0 0 24 24');
@@ -54,7 +54,7 @@ function svg(path: string, className: string): SVGSVGElement {
 
 export function tileIcon(key: string, state: string): SVGSVGElement | null {
 	const set = TILE_ICONS[key];
-	return set ? svg(set[state] ?? set.default, 'home-tile-icon') : null;
+	return set ? iconSvg(set[state] ?? set.default, 'home-tile-icon') : null;
 }
 
 const BATTERY_LEVELS = [mdiBatteryOutline, mdiBattery10, mdiBattery20, mdiBattery30, mdiBattery40, mdiBattery50, mdiBattery60, mdiBattery70, mdiBattery80, mdiBattery90, mdiBattery];
@@ -62,7 +62,7 @@ const BATTERY_LEVELS = [mdiBatteryOutline, mdiBattery10, mdiBattery20, mdiBatter
 export function statusIcon(key: string, value: string | null): SVGSVGElement | null {
 	if (key === 'battery') {
 		const level = Math.min(10, Math.max(0, Math.round(Number(value) / 10)));
-		return svg(BATTERY_LEVELS[Number.isFinite(level) ? level : 10], 'home-status-icon');
+		return iconSvg(BATTERY_LEVELS[Number.isFinite(level) ? level : 10], 'home-status-icon');
 	}
-	return STATUS_ICONS[key] ? svg(STATUS_ICONS[key], 'home-status-icon') : null;
+	return STATUS_ICONS[key] ? iconSvg(STATUS_ICONS[key], 'home-status-icon') : null;
 }
