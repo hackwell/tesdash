@@ -1,4 +1,5 @@
 // House controls and car status from Home Assistant, rendered above the app grid.
+import { statusIcon, tileIcon } from './icons';
 import { toast } from './toast';
 
 const POLL_MS = 15_000;
@@ -10,13 +11,13 @@ interface HomeTile {
 	domain: string;
 	state: string;
 	hold: boolean;
-	geofence: boolean;
+	icon: string;
 }
 
 interface HomeSnapshot {
 	enabled: boolean;
 	reachable?: boolean;
-	status?: { label: string; value: string | null; unit: string }[];
+	status?: { label: string; icon: string; value: string | null; unit: string }[];
 	tiles?: HomeTile[];
 }
 
@@ -44,17 +45,6 @@ function hintFor(tile: HomeTile): string {
 	return coverAction(tile.state) === 'open' ? 'Halten zum Öffnen' : 'Halten zum Schließen';
 }
 
-function currentPosition(): Promise<{ lat: number; lon: number }> {
-	return new Promise((resolve, reject) => {
-		if (!navigator.geolocation) return reject(new Error('no geolocation'));
-		navigator.geolocation.getCurrentPosition(
-			(pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-			reject,
-			{ enableHighAccuracy: true, timeout: 8_000, maximumAge: 30_000 },
-		);
-	});
-}
-
 export function initHomeBar(): void {
 	const root = document.getElementById('home')!;
 	const statusRow = document.getElementById('home-status')!;
@@ -75,6 +65,8 @@ export function initHomeBar(): void {
 
 		const items = (snap.status ?? []).filter((s) => s.value !== null).map((s) => {
 			const item = document.createElement('span');
+			const icon = statusIcon(s.icon, s.value);
+			if (icon) item.append(icon);
 			item.append(s.label);
 			const value = document.createElement('b');
 			value.textContent = `${s.value}${s.unit ? ` ${s.unit}` : ''}`;
@@ -116,7 +108,12 @@ export function initHomeBar(): void {
 				hint.className = 'home-tile-hint';
 				hint.textContent = hintFor(tile);
 
-				button.append(progress, name, state, hint);
+				const head = document.createElement('span');
+				head.className = 'home-tile-head';
+				const icon = tileIcon(tile.icon, tile.state);
+				if (icon) head.append(icon);
+				head.append(name);
+				button.append(progress, head, state, hint);
 				return button;
 			}),
 		);
@@ -126,21 +123,12 @@ export function initHomeBar(): void {
 		busy = true;
 		try {
 			const action = actionFor(tile);
-			let position: { lat: number; lon: number } | undefined;
-			if (tile.geofence) {
-				try {
-					position = await currentPosition();
-				} catch {
-					toast('Standort nicht verfügbar – Aktion abgebrochen.');
-					return;
-				}
-			}
 			const res = await fetch(`/api/home/tiles/${tile.id}`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ action, position }),
+				body: JSON.stringify({ action }),
 			});
-			if (res.status === 403) toast(`${tile.name}: nur in der Nähe von zu Hause.`);
+			if (res.status === 403) toast(`${tile.name}: geht nur, wenn das Auto zu Hause ist.`);
 			else if (!res.ok) toast(`${tile.name}: hat nicht geklappt.`);
 			else if (tile.domain === 'cover') toast(`${tile.name}: ${action === 'open' ? 'öffnet' : 'schließt'}.`);
 		} catch {

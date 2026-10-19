@@ -124,8 +124,8 @@ async function handleApi(req: Request, path: string): Promise<Response> {
 	if (tileMatch && req.method === 'POST') {
 		if (!home) return json({ error: 'home disabled' }, 404);
 		try {
-			const body = (await readJson(req)) as { action?: TileAction; position?: { lat: number; lon: number } };
-			await home.act(tileMatch[1], body.action as TileAction, body.position);
+			const body = (await readJson(req)) as { action?: TileAction };
+			await home.act(tileMatch[1], body.action as TileAction);
 			return json({ ok: true });
 		} catch (err) {
 			if (err instanceof HomeError) return json({ error: err.message }, err.status);

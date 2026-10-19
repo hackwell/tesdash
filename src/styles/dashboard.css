@@ -639,3 +639,15 @@ body.is-editing .grid:empty { outline: 1px dashed rgba(255, 255, 255, 0.12); }
 .form-row--inline .form-label { min-height: 48px; display: flex; align-items: center; cursor: pointer; }
 .cat-btn { min-height: 44px; padding: 0 0.9rem; }
 .toggle-switch { min-height: 48px; }
+
+/* ── Icons (Material Design Icons) ── */
+.home-tile-head { display: flex; align-items: center; gap: 0.55rem; }
+.home-tile-icon { width: 28px; height: 28px; flex-shrink: 0; color: var(--muted); }
+.home-tile--wide .home-tile-icon { width: 34px; height: 34px; }
+.home-tile[data-state='on'] .home-tile-icon { color: #facc15; }
+.home-tile[data-state='open'] .home-tile-icon,
+.home-tile[data-state='opening'] .home-tile-icon,
+.home-tile[data-state='closing'] .home-tile-icon { color: var(--open); }
+.home-tile[data-state='closed'] .home-tile-icon { color: var(--closed); }
+.home-status > span { display: inline-flex; align-items: center; }
+.home-status-icon { width: 18px; height: 18px; margin-right: 0.3rem; color: var(--muted); }

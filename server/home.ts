@@ -11,6 +11,7 @@ export interface StatusItem {
 	attribute?: string;
 	unit?: string;
 	decimals?: number;
+	icon?: string;
 }
 
 export interface Tile {
@@ -19,8 +20,11 @@ export interface Tile {
 	entity: string;
 	/** Require a long press before the action fires. */
 	hold?: boolean;
-	/** Only act when the car reports a position within this distance of HA's home location. */
+	/** Only act when this device tracker (the car, read from HA on the server) is within geofenceMeters of HA's home. */
+	geofenceTracker?: string;
 	geofenceMeters?: number;
+	/** Icon key, see src/lib/icons.ts. */
+	icon?: string;
 }
 
 export interface HomeConfig {
@@ -48,6 +52,9 @@ export function loadHomeConfig(path: string): HomeConfig | null {
 	for (const tile of raw.tiles ?? []) {
 		const domain = tile.entity.split('.')[0];
 		if (!SERVICES[domain]) throw new Error(`home config: unsupported entity ${tile.entity}`);
+		if (!!tile.geofenceMeters !== !!tile.geofenceTracker) {
+			throw new Error(`home config: ${tile.id} needs both geofenceTracker and geofenceMeters`);
+		}
 	}
 	return { status: raw.status ?? [], tiles: raw.tiles ?? [] };
 }
@@ -117,6 +124,7 @@ export function createHome(config: HomeConfig, haUrl: string, haToken: string) {
 			reachable,
 			status: config.status.map((item) => ({
 				label: item.label,
+				icon: item.icon ?? '',
 				value: formatStatus(item, states.get(item.entity)),
 				unit: item.unit ?? '',
 			})),
@@ -126,23 +134,33 @@ export function createHome(config: HomeConfig, haUrl: string, haToken: string) {
 				domain: tile.entity.split('.')[0],
 				state: states.get(tile.entity)?.state ?? 'unavailable',
 				hold: !!tile.hold,
-				geofence: !!tile.geofenceMeters,
+				icon: tile.icon ?? '',
 			})),
 		};
 	}
 
-	async function act(tileId: string, action: TileAction, position?: { lat: number; lon: number }): Promise<void> {
+	/** The car's position comes from Home Assistant, never from the browser, so it cannot be spoofed by a client. */
+	async function trackerDistance(tracker: string): Promise<number | null> {
+		const state = (await ha(`states/${tracker}`)) as HaState;
+		const lat = Number(state.attributes.latitude);
+		const lon = Number(state.attributes.longitude);
+		if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+		return distanceMeters({ lat, lon }, await homeLocation());
+	}
+
+	async function act(tileId: string, action: TileAction): Promise<void> {
 		const tile = config.tiles.find((t) => t.id === tileId);
 		if (!tile) throw new HomeError('unknown tile', 404);
 		const target = serviceFor(tile, action);
 		if (!target) throw new HomeError('action not allowed', 400);
 
-		if (tile.geofenceMeters) {
-			if (!position || !Number.isFinite(position.lat) || !Number.isFinite(position.lon)) {
-				throw new HomeError('position required', 400);
+		if (tile.geofenceTracker && tile.geofenceMeters) {
+			const distance = await trackerDistance(tile.geofenceTracker);
+			if (distance === null || distance > tile.geofenceMeters) {
+				// Distance stays in the server log only; the client learns nothing about the home location.
+				console.log(`[home] ${tile.id}: refused, car distance ${distance === null ? 'unknown' : `${Math.round(distance)} m`}`);
+				throw new HomeError('car not at home', 403);
 			}
-			const distance = distanceMeters(position, await homeLocation());
-			if (distance > tile.geofenceMeters) throw new HomeError(`too far from home (${Math.round(distance)} m)`, 403);
 		}
 
 		await ha(`services/${target.domain}/${target.service}`, {

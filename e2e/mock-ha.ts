@@ -12,6 +12,7 @@ const states = new Map<string, { entity_id: string; state: string; attributes: R
 		['light.0x00178801067e284f', 'off', {}],
 		['light.0x00178801067e2dd1', 'off', {}],
 		['light.aussenbeleuchtung', 'off', {}],
+		['device_tracker.tesla_model_y_location_tracker_2', 'home', { latitude: 50.1005, longitude: 8.6005 }],
 	].map(([id, state, attributes]) => [id as string, { entity_id: id as string, state: state as string, attributes: attributes as Record<string, unknown> }]),
 );
 const calls: { service: string; entity_id: string }[] = [];
@@ -24,11 +25,22 @@ Bun.serve({
 		if (pathname === '/__reset') {
 			calls.length = 0;
 			states.get('cover.garagentor')!.state = 'closed';
+			states.get('device_tracker.tesla_model_y_location_tracker_2')!.attributes = { latitude: 50.1005, longitude: 8.6005 };
+			return Response.json({ ok: true });
+		}
+		if (pathname === '/__car') {
+			// Move the car: ?lat=..&lon=.. or no params for "no position".
+			const q = new URL(req.url).searchParams;
+			states.get('device_tracker.tesla_model_y_location_tracker_2')!.attributes = q.has('lat')
+				? { latitude: Number(q.get('lat')), longitude: Number(q.get('lon')) }
+				: {};
 			return Response.json({ ok: true });
 		}
 		if (req.headers.get('authorization') !== 'Bearer test-token') return new Response('unauthorized', { status: 401 });
 		if (pathname === '/api/config') return Response.json(HOME);
 		if (pathname === '/api/states') return Response.json([...states.values()]);
+		const single = pathname.match(/^\/api\/states\/(.+)$/);
+		if (single) return states.has(single[1]) ? Response.json(states.get(single[1])) : new Response('not found', { status: 404 });
 		const service = pathname.match(/^\/api\/services\/(\w+)\/(\w+)$/);
 		if (service && req.method === 'POST') {
 			const { entity_id } = await req.json();
