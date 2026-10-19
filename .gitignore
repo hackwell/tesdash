@@ -27,3 +27,4 @@ CLAUDE.md
 .claude/
 test-results/
 playwright-report/
+.e2e-data/

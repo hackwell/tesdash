@@ -56,7 +56,7 @@ categories:
         logo: /logos/youtube.svg
         color: "#FF0000"
 
-  - name: Sports
+  - name: Sport
     apps:
       - name: DAZN
         url: https://www.dazn.com
@@ -93,7 +93,7 @@ categories:
   #       url: https://web.stremio.com
   #       logo: https://cdn.simpleicons.org/stremio/8A5FBF
 
-  - name: Charging
+  - name: Laden
     apps:
       # United States
       - name: Blink Charging
@@ -299,7 +299,7 @@ categories:
         color: "#6EE7FF"
         fullscreen: false
 
-  - name: Utility
+  - name: Unterwegs
     apps:
       - name: Google Maps
         url: https://maps.google.com

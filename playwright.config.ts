@@ -1,22 +1,22 @@
 import { defineConfig, devices } from '@playwright/test';
 
 // Tesla's in-car browser is Chromium-based, so chromium is the faithful target.
+// Each run starts the real server against a throwaway state file.
 export default defineConfig({
 	testDir: './e2e',
-	fullyParallel: true,
+	fullyParallel: false,
+	workers: 1,
 	forbidOnly: !!process.env.CI,
-	retries: process.env.CI ? 1 : 0,
-	workers: process.env.CI ? 1 : undefined,
-	reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
+	reporter: [['list']],
 	use: {
 		baseURL: 'http://localhost:4173',
 		trace: 'retain-on-failure'
 	},
 	projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 	webServer: {
-		command: 'bun run preview --port 4173',
+		command: 'rm -rf .e2e-data && STATE_FILE=.e2e-data/state.json PORT=4173 bun server/index.ts',
 		url: 'http://localhost:4173/',
-		reuseExistingServer: !process.env.CI,
+		reuseExistingServer: false,
 		timeout: 30_000
 	}
 });

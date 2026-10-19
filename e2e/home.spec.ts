@@ -1,110 +1,143 @@
-import { readFileSync } from 'node:fs';
-import { load } from 'js-yaml';
-import { expect, test } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
-const REDIRECT_PREFIX = 'https://www.youtube.com/redirect?q=';
-
-interface AppConfigApp {
-	name: string;
-	url: string;
-	fullscreen?: boolean;
-}
-interface AppConfigCategory {
-	name: string;
-	apps: AppConfigApp[];
+async function enterEditMode(page: Page) {
+	await page.getByRole('button', { name: 'Bearbeiten', exact: true }).click();
+	await expect(page.locator('body')).toHaveClass(/is-editing/);
 }
 
-function loadExpectedApps(): Map<string, boolean> {
-	const config = load(readFileSync('src/data/config.yml', 'utf-8')) as {
-		categories: AppConfigCategory[];
-	};
-	// name -> whether its card link must be wrapped with the redirect
-	const expected = new Map<string, boolean>();
-	for (const cat of config.categories) {
-		for (const app of cat.apps) {
-			expected.set(app.name, app.fullscreen !== false);
-		}
-	}
-	return expected;
-}
-
-test.describe('Home dashboard', () => {
-	test.beforeEach(async ({ page }) => {
-		await page.goto('/');
-	});
-
-	test('renders the dashboard with title and categories', async ({ page }) => {
-		await expect(page).toHaveTitle(/Tesdash/i);
-		await expect(page.locator('h1, h2').first()).toBeVisible();
-	});
-
-	test('app cards open via redirect unless fullscreen is disabled in config', async ({ page }) => {
-		const expected = loadExpectedApps();
-		const cards = page.locator('a.card[href]');
-		const count = await cards.count();
-		expect(count).toBeGreaterThan(0);
-
-		for (let i = 0; i < count; i++) {
-			const card = cards.nth(i);
-			const alt = (await card.locator('img').first().getAttribute('alt')) ?? '';
-			const name = alt.replace(/ logo$/, '');
-			const href = (await card.getAttribute('href')) ?? '';
-
-			const wrapped = href.startsWith(REDIRECT_PREFIX);
-			if (expected.has(name)) {
-				expect(wrapped, `${name}: expected fullscreen=${expected.get(name)}`).toBe(
-					expected.get(name)
-				);
-			}
-
-			// Whatever the mode, the final target must be a parseable URL.
-			const target = wrapped ? decodeURIComponent(href.slice(REDIRECT_PREFIX.length)) : href;
-			expect(() => new URL(target), `${name} → ${href}`).not.toThrow();
-		}
-	});
-
-	test('wrapped URLs decode to valid targets', async ({ page }) => {
-		const href = await page.locator(`a[href^="${REDIRECT_PREFIX}"]`).first().getAttribute('href');
-		const decoded = decodeURIComponent(href!.slice(REDIRECT_PREFIX.length));
-		expect(() => new URL(decoded)).not.toThrow();
-	});
-
-	test('shows the URL launcher and clock islands', async ({ page }) => {
-		await expect(page.getByPlaceholder(/Enter a URL/i)).toBeVisible();
-		await expect(page.locator('.clock .time')).toHaveText(/^\d{2}:\d{2}$/);
-	});
-
-	test('persists category order in localStorage after reorder', async ({ page }) => {
-		const firstCategory = page.locator('[data-category], section, .category').first();
-		await expect(firstCategory).toBeVisible();
-
-		// The app persists drag-and-drop ordering under this key; verify the
-		// storage plumbing exists and survives a reload.
-		await page.evaluate(() => {
-			localStorage.setItem('tesflix-category-order', JSON.stringify([2, 0, 1]));
-		});
-		await page.reload();
-		const saved = await page.evaluate(() => localStorage.getItem('tesflix-category-order'));
-		expect(JSON.parse(saved!)).toEqual([2, 0, 1]);
-	});
-
-	test('has no console errors on load', async ({ page }) => {
-		const errors: string[] = [];
-		page.on('console', (msg) => {
-			if (msg.type() === 'error') errors.push(msg.text());
-		});
-		await page.goto('/');
-		await page.waitForLoadState('networkidle');
-		expect(errors).toEqual([]);
-	});
+test('shows only the app grid, no header, launcher or analytics', async ({ page }) => {
+	await page.goto('/');
+	await expect(page.locator('.card').first()).toBeVisible();
+	await expect(page.locator('header, .launcher-wrap, footer')).toHaveCount(0);
+	expect(await page.locator('script[src*="umami"]').count()).toBe(0);
+	const href = await page.locator('.card', { hasText: 'Netflix' }).getAttribute('href');
+	expect(href).toBe('https://www.youtube.com/redirect?q=' + encodeURIComponent('https://www.netflix.com'));
 });
 
-test.describe('Other pages', () => {
-	for (const path of ['/legal/', '/me/']) {
-		test(`${path} loads without errors`, async ({ page }) => {
-			const response = await page.goto(path);
-			expect(response?.status()).toBe(200);
-			await expect(page.locator('body')).not.toBeEmpty();
-		});
+test('added app is stored on the server, not in the browser', async ({ page, browser }) => {
+	await page.goto('/');
+	await enterEditMode(page);
+	await page.getByRole('button', { name: 'App hinzufügen' }).click();
+	await page.locator('#app-name').fill('Home Assistant');
+	await page.locator('#app-url').fill('ha.example.com');
+	await page.locator('#app-category').selectOption('__new__');
+	await page.locator('#app-new-cat').fill('Zuhause');
+	await page.locator('.toggle-switch').click();
+	await expect(page.locator('#app-fullscreen')).not.toBeChecked();
+	await page.locator('#app-submit').click();
+
+	const card = page.locator('.card', { hasText: 'Home Assistant' });
+	await expect(card).toBeVisible();
+	await expect.poll(async () => (await page.request.get('/api/state')).json())
+		.toMatchObject({ categories: expect.arrayContaining([expect.objectContaining({ name: 'Zuhause' })]) });
+	expect(await page.evaluate(() => localStorage.length)).toBe(0);
+
+	// A fresh browser context (think: the car) sees the same app.
+	const other = await browser.newContext();
+	const otherPage = await other.newPage();
+	await otherPage.goto('/');
+	const otherCard = otherPage.locator('.card', { hasText: 'Home Assistant' });
+	await expect(otherCard).toHaveAttribute('href', 'https://ha.example.com/');
+	await other.close();
+});
+
+test('edit, delete and rename persist across reloads', async ({ page }) => {
+	await page.goto('/');
+	await enterEditMode(page);
+
+	await page.locator('.card', { hasText: 'Waze' }).click();
+	await page.locator('#app-name').fill('Waze Navi');
+	await page.locator('#app-submit').click();
+	await expect(page.locator('.card', { hasText: 'Waze Navi' })).toBeVisible();
+
+	await page.locator('.card', { hasText: 'Xbox Cloud' }).locator('.card-delete').click();
+	await expect(page.locator('.card', { hasText: 'Xbox Cloud' })).toHaveCount(0);
+
+	await page.locator('.category', { hasText: 'Sport' }).getByRole('button', { name: 'Bearbeiten' }).click();
+	await page.locator('#cat-name').fill('Sport live');
+	await page.locator('#cat-form button[type=submit]').click();
+
+	await page.waitForLoadState('networkidle');
+	await page.reload();
+	await expect(page.locator('.card', { hasText: 'Waze Navi' })).toBeVisible();
+	await expect(page.locator('.card', { hasText: 'Xbox Cloud' })).toHaveCount(0);
+	await expect(page.locator('.category-title', { hasText: 'Sport live' })).toBeVisible();
+});
+
+test('dragging a card into another category persists', async ({ page }) => {
+	await page.setViewportSize({ width: 1920, height: 2000 });
+	await page.goto('/');
+	await enterEditMode(page);
+	// Drag upwards: removing the card from its old grid then cannot shift the drop target.
+	const source = page.locator('.card', { hasText: 'GeForce Now' });
+	const target = page.locator('.category', { hasText: 'Streaming' }).locator('.card').first();
+
+	const from = (await source.boundingBox())!;
+	const to = (await target.boundingBox())!;
+	await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(from.x + from.width / 2 + 20, from.y + from.height / 2 + 20, { steps: 3 });
+	await page.mouse.move(to.x + 10, to.y + to.height / 2, { steps: 10 });
+	await page.mouse.up();
+
+	await page.waitForLoadState('networkidle');
+	await page.reload();
+	await expect(page.locator('.category', { hasText: 'Streaming' }).locator('.card').first()).toContainText('GeForce Now');
+	await expect(page.locator('.category', { hasText: 'Gaming' }).locator('.card', { hasText: 'GeForce Now' })).toHaveCount(0);
+});
+
+test('a stale tab gets the newer state instead of overwriting it', async ({ page, browser }) => {
+	await page.goto('/');
+	const other = await browser.newContext();
+	const otherPage = await other.newPage();
+	await otherPage.goto('/');
+	await enterEditMode(otherPage);
+	await otherPage.locator('.card', { hasText: 'Ventusky' }).locator('.card-delete').click();
+	await expect(otherPage.locator('.card', { hasText: 'Ventusky' })).toHaveCount(0);
+	await otherPage.waitForLoadState('networkidle');
+	await other.close();
+
+	// First tab still shows Ventusky and now edits from its stale revision.
+	await enterEditMode(page);
+	await page.locator('.card', { hasText: 'PlugShare' }).locator('.card-delete').click();
+	await expect(page.locator('#toast')).toContainText('woanders geändert');
+	await expect(page.locator('.card', { hasText: 'Ventusky' })).toHaveCount(0);
+	await expect(page.locator('.card', { hasText: 'PlugShare' })).toBeVisible();
+});
+
+test('touch: long press picks a card up, a quick swipe does not', async ({ browser }) => {
+	const context = await browser.newContext({ hasTouch: true, viewport: { width: 1920, height: 2000 } });
+	const page = await context.newPage();
+	await page.goto('/');
+	await enterEditMode(page);
+	const cdp = await context.newCDPSession(page);
+	const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', x: number, y: number) =>
+		cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+
+	const source = page.locator('.card', { hasText: 'Eurosport' });
+	const target = page.locator('.category', { hasText: 'Streaming' }).locator('.card').first();
+	const from = (await source.boundingBox())!;
+	const to = (await target.boundingBox())!;
+	const sx = from.x + from.width / 2, sy = from.y + from.height / 2;
+
+	// Quick swipe: no drag starts.
+	await touch('touchStart', sx, sy);
+	await touch('touchMove', sx, sy + 40);
+	await page.waitForTimeout(500);
+	expect(await page.locator('.touch-ghost').count()).toBe(0);
+	await touch('touchEnd', sx, sy + 40);
+
+	// Long press, then move.
+	await touch('touchStart', sx, sy);
+	await page.waitForTimeout(500);
+	expect(await page.locator('.touch-ghost').count()).toBe(1);
+	for (let i = 1; i <= 10; i++) {
+		await touch('touchMove', sx + ((to.x + 10 - sx) * i) / 10, sy + ((to.y + to.height / 2 - sy) * i) / 10);
 	}
+	await touch('touchEnd', to.x + 10, to.y + to.height / 2);
+
+	await page.waitForLoadState('networkidle');
+	await page.reload();
+	await expect(page.locator('.category', { hasText: 'Streaming' }).locator('.card').first()).toContainText('Eurosport');
+	await context.close();
 });

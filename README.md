@@ -1,136 +1,46 @@
-<p align="center">
-  <img src="public/logos/tesdash-black.webp" alt="Tesdash" width="400" />
-</p>
+# Tesdash (server-backed fork)
 
-<p align="center">
-  A self-hosted static dashboard designed for the Tesla browser — launch all your apps in fullscreen with a single tap.
-</p>
+Fork of [crstian19/tesdash](https://github.com/crstian19/tesdash), a dashboard for Tesla's in-car browser.
+This fork keeps only the app grid and moves all settings from the browser's localStorage to the server,
+so every device sees the same dashboard.
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Astro-6-FF5D01?style=for-the-badge&logo=astro&logoColor=white" />
-  <img src="https://img.shields.io/badge/Svelte-5-FF3E00?style=for-the-badge&logo=svelte&logoColor=white" />
-  <img src="https://img.shields.io/badge/Tailwind-4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" />
-  <img src="https://img.shields.io/github/actions/workflow/status/crstian19/tesdash/docker.yml?style=for-the-badge&logo=githubactions&logoColor=white&label=Docker+Build" />
-  <img src="https://img.shields.io/github/license/crstian19/tesdash?style=for-the-badge&logo=opensourceinitiative&logoColor=white" />
-</p>
+## What changed
 
----
+- Header, URL launcher, clock, language/region picker, charging calculator, support/about/FAQ modals,
+  analytics, `/me` and `/legal` are gone. The page is just the app cards.
+- A small Bun server (`server/index.ts`) serves the built page and one shared JSON document:
+  - `GET /api/state` – categories and apps
+  - `PUT /api/state` – replace the document; requires the current `revision`, answers `409` with the newer
+    state when another device saved in between
+  - `POST /api/color` – dominant color of a logo (used when adding an app without a color)
+- Edit mode (pencil button): add, edit and delete apps, rename and delete categories, drag cards between
+  categories and categories by their handle. On touch screens hold a card briefly to pick it up.
+- There is no login. Put the server behind an authenticating reverse proxy (here: Authentik forward auth).
 
-## How it works
+## Run
 
-Tesla's browser can open any URL fullscreen using a YouTube redirect trick. Tesdash wraps every app link with:
-
+```sh
+docker build -t tesdash .
+docker run -p 3000:3000 -v tesdash-data:/data tesdash
 ```
-https://www.youtube.com/redirect?q=<your-url>
-```
 
-This is applied automatically at build time — you just add URLs to the config file.
+On first start the state is seeded from `src/data/config.yml`, keeping apps available in `SEED_REGION`
+(default `DE`). After that `config.yml` is no longer read; edit through the UI.
 
-## Stack
+| Variable | Default | |
+|---|---|---|
+| `PORT` | `3000` | |
+| `STATE_FILE` | `/data/state.json` | the persisted dashboard |
+| `SEED_REGION` | `DE` | country filter for the first seed |
 
-| Layer | Technology |
-|---|---|
-| Framework | Astro 6 (SSG) |
-| Interactive islands | Svelte 5 (Clock, URL Launcher) |
-| Styling | Tailwind CSS 4 + DaisyUI 5 |
-| Config | YAML parsed at build time with `js-yaml` |
-| Logo color extraction | `sharp` (dominant color from logo image) |
-| Runtime | Bun |
+## Develop
 
-## Features
-
-- **Fullscreen launcher** — every app opens fullscreen via the Tesla YouTube redirect
-- **Per-app fullscreen toggle** — set `fullscreen: false` on any app to open it in a normal tab instead
-- **Glassmorphism UI** — dark theme with backdrop blur and per-app accent color extracted from the logo
-- **Spotlight effect** — radial gradient follows cursor/finger across each card (disabled on touch for performance)
-- **Category drag & drop** — reorder categories by dragging the handle; order persists in `localStorage`
-- **Add custom apps** — tap the `+` button to add any app at runtime without touching the config
-- **URL launcher** — type any URL and open it fullscreen instantly
-- **Language & Region modal** — 13 interface languages; country filter hides apps unavailable in your region
-- **Regional app support** — apps can be limited to specific countries via `regions:` in the config
-- **EV charging calculator** — calculates charge time, cost and energy for all Tesla models with a dual-range battery slider
-- **Live clock** — updates every second
-- **Touch optimized** — all interactions work on the Tesla touchscreen
-- **PWA ready** — web manifest and icons configured for home screen installation
-- **Zero JS for static content** — cards and layout are pure HTML, JS only loads for interactive islands
-
-## Getting started
-
-```bash
-# Install dependencies
+```sh
 bun install
-
-# Start dev server
-bun dev
-
-# Build static output → /dist
-bun run build
-
-# Preview build
-bun run preview
+bun --bun run build   # Astro needs Node >= 22.22; --bun runs it on Bun instead
+bun run start         # STATE_FILE=./state.json for local runs
+bun test src          # unit tests
+bunx playwright test  # end-to-end tests against the real server and a throwaway state file
 ```
 
-## Self-hosting with Docker
-
-A Docker image is available at `ghcr.io/crstian19/tesdash`. It builds the static output with Bun and serves it with nginx.
-
-```bash
-docker run -p 8080:80 ghcr.io/crstian19/tesdash:latest
-```
-
-Or with Docker Compose:
-
-```yaml
-services:
-  tesdash:
-    image: ghcr.io/crstian19/tesdash:latest
-    ports:
-      - "8080:80"
-    restart: unless-stopped
-```
-
-Images are published automatically on every version tag for `amd64` and `arm64`.
-
-## Configuration
-
-Edit `src/data/config.yml` to add, remove or reorganize apps. No code changes needed.
-
-```yaml
-categories:
-  - name: Streaming
-    apps:
-      - name: Netflix
-        url: https://www.netflix.com
-        logo: /logos/netflix.png   # local path or remote URL
-        color: "#E50914"           # optional — auto-extracted from logo if omitted
-        regions: ['ES', 'GB']      # optional — hide app outside these countries
-        fullscreen: false          # optional — open without YouTube redirect (default: true)
-```
-
-### Logo sources
-
-- **Local:** place PNG/SVG/WebP files in `public/logos/` and reference them as `/logos/filename.png`
-- **Remote:** use any direct image URL (fetched at build time)
-- **Auto color:** if `color` is omitted, the dominant color is extracted from the logo automatically
-
-## Project structure
-
-```
-tesdash/
-├── public/
-│   └── logos/          ← App logos (PNG, SVG, WebP)
-├── src/
-│   ├── components/
-│   │   ├── Clock.svelte
-│   │   └── UrlLauncher.svelte
-│   ├── data/
-│   │   └── config.yml  ← Edit this to configure your apps
-│   └── pages/
-│       └── index.astro
-├── .github/
-│   └── workflows/
-│       └── docker.yml  ← Builds and pushes Docker image on version tags
-├── Dockerfile
-├── astro.config.mjs
-└── package.json
-```
+MIT licensed, like the original.
