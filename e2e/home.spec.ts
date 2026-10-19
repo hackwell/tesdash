@@ -41,6 +41,21 @@ test('added app is stored on the server, not in the browser', async ({ page, bro
 	await other.close();
 });
 
+test('logo color is computed in the browser', async ({ page }) => {
+	await page.goto('/');
+	await enterEditMode(page);
+	await page.getByRole('button', { name: 'App hinzufügen' }).click();
+	await page.locator('#app-name').fill('Tube');
+	await page.locator('#app-url').fill('https://www.youtube.com');
+	await page.locator('#app-logo').fill('/logos/youtube.svg');
+	await page.locator('#app-submit').click();
+	await expect(page.locator('.card', { hasText: 'Tube' }).first()).toBeVisible();
+	await expect.poll(async () => {
+		const state = await (await page.request.get('/api/state')).json();
+		return state.categories.flatMap((c: { apps: { name: string; color: string }[] }) => c.apps).find((a: { name: string }) => a.name === 'Tube')?.color;
+	}).toBe('#ff0000');
+});
+
 test('edit, delete and rename persist across reloads', async ({ page }) => {
 	await page.goto('/');
 	await enterEditMode(page);

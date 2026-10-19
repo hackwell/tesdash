@@ -108,16 +108,6 @@ async function handleApi(req: Request, path: string): Promise<Response> {
 		}
 	}
 
-	if (path === '/api/color' && req.method === 'POST') {
-		try {
-			const { logo } = (await readJson(req)) as { logo?: unknown };
-			if (typeof logo !== 'string' || logo.length > 2048) return json({ error: 'logo missing' }, 400);
-			return json({ color: await extractColor(logo, DIST_DIR, '#e50914') });
-		} catch {
-			return json({ error: 'invalid JSON' }, 400);
-		}
-	}
-
 	return json({ error: 'not found' }, 404);
 }
 

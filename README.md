@@ -12,7 +12,7 @@ so every device sees the same dashboard.
   - `GET /api/state` – categories and apps
   - `PUT /api/state` – replace the document; requires the current `revision`, answers `409` with the newer
     state when another device saved in between
-  - `POST /api/color` – dominant color of a logo (used when adding an app without a color)
+  - logo colors are computed in the browser (canvas); the server never fetches remote URLs
 - Edit mode (pencil button): add, edit and delete apps, rename and delete categories, drag cards between
   categories and categories by their handle. On touch screens hold a card briefly to pick it up.
 - There is no login. Put the server behind an authenticating reverse proxy (here: Authentik forward auth).

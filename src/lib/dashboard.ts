@@ -1,4 +1,5 @@
 // Client side of the dashboard: renders the shared server state and writes every change back.
+import { dominantColor } from './color';
 import { launchHref, normalizeUrl, type App, type Category, type DashboardState } from './state';
 
 interface StoredState extends DashboardState {
@@ -252,19 +253,32 @@ export function initDashboard(): void {
 		node.hidden = false;
 	}
 
-	async function resolveColor(logo: string): Promise<string> {
-		if (!form.autoColor.checked || !logo) return form.color.value;
-		try {
-			const res = await fetch('/api/color', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ logo }),
-			});
-			if (res.ok) return (await res.json()).color;
-		} catch {
-			// fall back to the picker value
-		}
-		return form.color.value;
+	/** Logo color computed in the browser; needs the logo host to allow CORS, otherwise the picker value is kept. */
+	function resolveColor(logo: string): Promise<string> {
+		const picked = form.color.value;
+		if (!form.autoColor.checked || !logo) return Promise.resolve(picked);
+		return new Promise((resolve) => {
+			const img = new Image();
+			img.crossOrigin = 'anonymous';
+			const timer = setTimeout(() => resolve(picked), 5000);
+			img.onload = () => {
+				clearTimeout(timer);
+				try {
+					const canvas = document.createElement('canvas');
+					canvas.width = canvas.height = 64;
+					const ctx = canvas.getContext('2d')!;
+					ctx.drawImage(img, 0, 0, 64, 64);
+					resolve(dominantColor(ctx.getImageData(0, 0, 64, 64).data) ?? picked);
+				} catch {
+					resolve(picked); // canvas tainted: host does not send CORS headers
+				}
+			};
+			img.onerror = () => {
+				clearTimeout(timer);
+				resolve(picked);
+			};
+			img.src = logo;
+		});
 	}
 
 	$('app-form').addEventListener('submit', async (e) => {
