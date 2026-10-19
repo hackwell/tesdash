@@ -79,6 +79,8 @@ function json(body: unknown, status = 200): Response {
 }
 
 async function readJson(req: Request): Promise<unknown> {
+	// Requiring JSON forces a CORS preflight, so other sites cannot post with the user's Authentik cookie.
+	if (!req.headers.get('content-type')?.startsWith('application/json')) throw new Error('JSON expected');
 	const text = await req.text();
 	if (text.length > MAX_BODY_BYTES) throw new Error('body too large');
 	return JSON.parse(text);

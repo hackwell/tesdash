@@ -39,7 +39,7 @@ On first start the state is seeded from `src/data/config.yml`, keeping apps avai
 bun install
 bun --bun run build   # Astro needs Node >= 22.22; --bun runs it on Bun instead
 bun run start         # STATE_FILE=./state.json for local runs
-bun test src          # unit tests
+bun test src server          # unit tests
 bunx playwright test  # end-to-end tests against the real server and a throwaway state file
 ```
 
