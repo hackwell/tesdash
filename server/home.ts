@@ -7,7 +7,10 @@ const HOME_CACHE_MS = 60 * 60 * 1000;
 export interface Tile {
 	id: string;
 	name: string;
-	entity: string;
+	/** One entity, or several of the same domain switched together (each addressed directly, no Zigbee group). */
+	entity: string | string[];
+	/** Extra data for light.turn_on, e.g. the colour the wall switch uses. */
+	onData?: Record<string, unknown>;
 	/** Require a long press before the action fires. */
 	hold?: boolean;
 	/** Only act when this device tracker (the car, read from HA on the server) is within geofenceMeters of HA's home. */
@@ -37,12 +40,34 @@ export class HomeError extends Error {
 	}
 }
 
+export function entitiesOf(tile: Pick<Tile, 'entity'>): string[] {
+	return Array.isArray(tile.entity) ? tile.entity : [tile.entity];
+}
+
+export function domainOf(tile: Pick<Tile, 'entity'>): string {
+	return entitiesOf(tile)[0].split('.')[0];
+}
+
+/**
+ * Several entities: 'on' only when all available ones are on, 'partial' when some are, 'unavailable' when none
+ * answers. So switching one floodlight on its own does not make the whole group look on.
+ */
+export function combinedState(states: (string | undefined)[]): string {
+	if (states.length === 1) return states[0] ?? 'unavailable';
+	const available = states.filter((s): s is string => s !== undefined && s !== 'unavailable');
+	if (!available.length) return 'unavailable';
+	const on = available.filter((s) => s === 'on').length;
+	return on === 0 ? 'off' : on === available.length ? 'on' : 'partial';
+}
+
 export function loadHomeConfig(path: string): HomeConfig | null {
 	if (!existsSync(path)) return null;
 	const raw = JSON.parse(readFileSync(path, 'utf-8')) as HomeConfig;
 	for (const tile of raw.tiles ?? []) {
-		const domain = tile.entity.split('.')[0];
-		if (!SERVICES[domain]) throw new Error(`home config: unsupported entity ${tile.entity}`);
+		const domain = domainOf(tile);
+		if (!SERVICES[domain] || entitiesOf(tile).some((e) => e.split('.')[0] !== domain)) {
+			throw new Error(`home config: ${tile.id} has unsupported or mixed entities`);
+		}
 		if (!!tile.geofenceMeters !== !!tile.geofenceTracker) {
 			throw new Error(`home config: ${tile.id} needs both geofenceTracker and geofenceMeters`);
 		}
@@ -59,8 +84,8 @@ export function distanceMeters(a: { lat: number; lon: number }, b: { lat: number
 	return 2 * 6_371_000 * Math.asin(Math.sqrt(h));
 }
 
-export function serviceFor(tile: Tile, action: TileAction): { domain: string; service: string } | null {
-	const domain = tile.entity.split('.')[0];
+export function serviceFor(tile: Pick<Tile, 'entity'>, action: TileAction): { domain: string; service: string } | null {
+	const domain = domainOf(tile);
 	const service = SERVICES[domain]?.[action];
 	return service ? { domain, service } : null;
 }
@@ -98,7 +123,7 @@ export function createHome(config: HomeConfig, haUrl: string, haToken: string) {
 	}
 
 	async function snapshot() {
-		const entities = new Set([...config.tiles.map((t) => t.entity), 'sun.sun']);
+		const entities = new Set([...config.tiles.flatMap(entitiesOf), 'sun.sun']);
 		let states = new Map<string, HaState>();
 		let reachable = true;
 		try {
@@ -113,8 +138,8 @@ export function createHome(config: HomeConfig, haUrl: string, haToken: string) {
 			tiles: config.tiles.filter((tile) => !tile.onlyWhenDark || isDark(states.get('sun.sun'))).map((tile) => ({
 				id: tile.id,
 				name: tile.name,
-				domain: tile.entity.split('.')[0],
-				state: states.get(tile.entity)?.state ?? 'unavailable',
+				domain: domainOf(tile),
+				state: combinedState(entitiesOf(tile).map((e) => states.get(e)?.state)),
 				hold: !!tile.hold,
 				icon: tile.icon ?? '',
 			})),
@@ -145,11 +170,21 @@ export function createHome(config: HomeConfig, haUrl: string, haToken: string) {
 			}
 		}
 
-		await ha(`services/${target.domain}/${target.service}`, {
+		let service = target.service;
+		let data: Record<string, unknown> = {};
+		if (action === 'toggle') {
+			// Explicit on/off keeps several lamps in step (a plain toggle would flip each one separately):
+			// all on → all off, otherwise (none or some on) → all on.
+			const current = await Promise.all(entitiesOf(tile).map(async (e) => ((await ha(`states/${e}`)) as HaState).state));
+			service = combinedState(current) === 'on' ? 'turn_off' : 'turn_on';
+			if (service === 'turn_on' && target.domain === 'light') data = tile.onData ?? {};
+		}
+
+		await ha(`services/${target.domain}/${service}`, {
 			method: 'POST',
-			body: JSON.stringify({ entity_id: tile.entity }),
+			body: JSON.stringify({ ...data, entity_id: entitiesOf(tile).length === 1 ? entitiesOf(tile)[0] : entitiesOf(tile) }),
 		});
-		console.log(`[home] ${tile.id}: ${target.domain}.${target.service}`);
+		console.log(`[home] ${tile.id}: ${target.domain}.${service}`);
 	}
 
 	return { snapshot, act };

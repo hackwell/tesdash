@@ -12,9 +12,41 @@
 		{
 			"id": "aussenlicht",
 			"name": "Außenlicht",
-			"entity": "light.hund",
-			"icon": "outdoor-lamp",
+			"entity": [
+				"light.0x0017880106938e72",
+				"light.0x00178801067e284f",
+				"light.0x00178801063cf3c5",
+				"light.0x00178801067e33fb",
+				"light.0x00178801067e2dd1",
+				"light.0x00178801067e226e"
+			],
+			"onData": {
+				"rgb_color": [
+					255,
+					251,
+					185
+				],
+				"brightness_pct": 100,
+				"transition": 3
+			},
+			"icon": "light-group",
 			"onlyWhenDark": true
+		},
+		{
+			"id": "garagenlicht",
+			"name": "Garagenlicht",
+			"entity": "light.0x00178801067e284f",
+			"icon": "floodlight",
+			"onlyWhenDark": true,
+			"onData": {
+				"rgb_color": [
+					255,
+					251,
+					185
+				],
+				"brightness_pct": 100,
+				"transition": 3
+			}
 		}
 	]
 }

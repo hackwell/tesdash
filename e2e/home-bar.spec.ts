@@ -31,13 +31,13 @@ test('shows house tiles with icons', async ({ browser }) => {
 	const { context, page } = await open(browser);
 	await expect(page.locator('.home-tile[data-id=garage]')).toContainText('Geschlossen');
 	await expect(page.locator('.home-tile[data-id=garage]')).toContainText('Halten zum Öffnen');
-	await expect(page.locator('.home-tile .home-tile-icon')).toHaveCount(2);
+	await expect(page.locator('.home-tile .home-tile-icon')).toHaveCount(3);
 	await context.close();
 });
 
 test('lights are only offered while it is dark', async ({ browser }) => {
 	const { context, page } = await open(browser);
-	await expect(page.locator('.home-tile')).toHaveCount(2);
+	await expect(page.locator('.home-tile')).toHaveCount(3);
 	await page.request.get(`${MOCK}/__sun?state=above_horizon`);
 	await page.reload();
 	await expect(page.locator('.home-tile[data-id=garage]')).toBeVisible();
@@ -46,11 +46,39 @@ test('lights are only offered while it is dark', async ({ browser }) => {
 	await context.close();
 });
 
-test('a light toggles with a single tap', async ({ browser }) => {
+const OUTDOOR = ['0x0017880106938e72', '0x00178801067e284f', '0x00178801063cf3c5', '0x00178801067e33fb', '0x00178801067e2dd1', '0x00178801067e226e'].map((id) => `light.${id}`);
+
+test('outdoor light switches all six lamps directly, in the wall switch colour', async ({ browser }) => {
 	const { context, page } = await open(browser);
 	await page.locator('.home-tile[data-id=aussenlicht]').click();
-	await expect.poll(() => calls(page)).toEqual([{ service: 'light.toggle', entity_id: 'light.hund' }]);
+	await expect.poll(() => calls(page)).toEqual([
+		{ service: 'light.turn_on', entity_id: OUTDOOR, data: { rgb_color: [255, 251, 185], brightness_pct: 100, transition: 3 } },
+	]);
 	await expect(page.locator('.home-tile[data-id=aussenlicht]')).toHaveAttribute('data-state', 'on');
+	await page.locator('.home-tile[data-id=aussenlicht]').click();
+	await expect.poll(async () => (await calls(page)).at(-1)).toEqual({ service: 'light.turn_off', entity_id: OUTDOOR });
+	await context.close();
+});
+
+test('outdoor light: garage floodlight alone shows "partially on", the next tap turns all on', async ({ browser }) => {
+	const { context, page } = await open(browser);
+	await page.locator('.home-tile[data-id=garagenlicht]').click();
+	await expect(page.locator('.home-tile[data-id=garagenlicht]')).toHaveAttribute('data-state', 'on');
+	await expect(page.locator('.home-tile[data-id=aussenlicht]')).toHaveAttribute('data-state', 'partial');
+	await expect(page.locator('.home-tile[data-id=aussenlicht]')).toContainText('Teilweise an');
+	await page.locator('.home-tile[data-id=aussenlicht]').click();
+	await expect.poll(async () => (await calls(page)).at(-1)).toMatchObject({ service: 'light.turn_on', entity_id: OUTDOOR });
+	await expect(page.locator('.home-tile[data-id=aussenlicht]')).toHaveAttribute('data-state', 'on');
+	await context.close();
+});
+
+test('the floodlight in front of the garage is its own tile', async ({ browser }) => {
+	const { context, page } = await open(browser);
+	await page.locator('.home-tile[data-id=garagenlicht]').click();
+	await expect.poll(() => calls(page)).toEqual([
+		{ service: 'light.turn_on', entity_id: 'light.0x00178801067e284f', data: { rgb_color: [255, 251, 185], brightness_pct: 100, transition: 3 } },
+	]);
+	await expect(page.locator('.home-tile[data-id=garagenlicht]')).toHaveAttribute('data-state', 'on');
 	await context.close();
 });
 

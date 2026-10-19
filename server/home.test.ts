@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { distanceMeters, serviceFor } from './home';
+import { combinedState, distanceMeters, serviceFor } from './home';
 
 describe('distanceMeters', () => {
 	it('measures short distances', () => {
@@ -23,5 +23,20 @@ describe('serviceFor', () => {
 		expect(serviceFor(garage, 'toggle')).toBeNull();
 		expect(serviceFor(light, 'open')).toBeNull();
 		expect(serviceFor({ ...light, entity: 'lock.haustuer' }, 'toggle')).toBeNull();
+	});
+});
+
+describe('combinedState', () => {
+	it('is on only when all lamps are on, partial when some are', () => {
+		expect(combinedState(['on', 'on'])).toBe('on');
+		expect(combinedState(['off', 'on', 'off'])).toBe('partial');
+		expect(combinedState(['on', 'unavailable'])).toBe('on');
+		expect(combinedState(['off', 'unavailable'])).toBe('off');
+		expect(combinedState(['unavailable', undefined])).toBe('unavailable');
+		expect(combinedState(['closed'])).toBe('closed');
+	});
+
+	it('serviceFor works for entity lists', () => {
+		expect(serviceFor({ entity: ['light.a', 'light.b'] }, 'toggle')).toEqual({ domain: 'light', service: 'toggle' });
 	});
 });

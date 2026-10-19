@@ -26,6 +26,7 @@ const STATE_LABELS: Record<string, string> = {
 	opening: 'Öffnet …',
 	closing: 'Schließt …',
 	on: 'An',
+	partial: 'Teilweise an',
 	off: 'Aus',
 	unavailable: 'Nicht erreichbar',
 };

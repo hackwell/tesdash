@@ -7,8 +7,11 @@ import {
 	mdiGarageVariant,
 	mdiHomeLightbulb,
 	mdiHomeLightbulbOutline,
+	mdiLightbulbGroup,
+	mdiLightbulbGroupOutline,
 	mdiLightbulbOn,
 	mdiLightbulbOutline,
+	mdiLightFloodDown,
 } from '@mdi/js';
 
 /** Icon per state; `default` is used for states without their own icon. */
@@ -17,6 +20,8 @@ const TILE_ICONS: Record<string, Record<string, string>> = {
 	light: { default: mdiLightbulbOutline, on: mdiLightbulbOn },
 	'outdoor-lamp': { default: mdiCoachLamp, on: mdiCoachLampVariant },
 	'house-light': { default: mdiHomeLightbulbOutline, on: mdiHomeLightbulb },
+	'light-group': { default: mdiLightbulbGroupOutline, on: mdiLightbulbGroup, partial: mdiLightbulbGroup },
+	floodlight: { default: mdiLightFloodDown, on: mdiLightFloodDown },
 };
 
 export function iconSvg(path: string, className: string): SVGSVGElement {
