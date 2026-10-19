@@ -14,7 +14,7 @@ COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production
 COPY --from=builder /app/dist ./dist
 COPY server ./server
-COPY src/lib/state.ts ./src/lib/state.ts
+COPY src/lib ./src/lib
 COPY src/data/config.yml ./src/data/config.yml
 RUN mkdir -p /data && chown bun:bun /data
 USER bun
