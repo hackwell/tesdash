@@ -3,8 +3,9 @@ import { encode } from 'uqr';
 
 const POLL_MS = 2_000;
 
-export function approveUrl(origin: string, code: string): string {
-	return `${origin}/admin/?code=${encodeURIComponent(code)}`;
+/** The QR code carries only the pairing reference; the code itself must be read off this screen. */
+export function approveUrl(origin: string, ref: string): string {
+	return `${origin}/admin/?ref=${encodeURIComponent(ref)}`;
 }
 
 function drawQr(canvas: HTMLCanvasElement, text: string): void {
@@ -35,8 +36,8 @@ export function initPairPage(): void {
 			status.textContent = 'Gerade zu viele Versuche. Bitte in einer Minute neu laden.';
 			return;
 		}
-		const { code } = (await res.json()) as { code: string };
-		const url = approveUrl(location.origin, code);
+		const { ref, code } = (await res.json()) as { ref: string; code: string };
+		const url = approveUrl(location.origin, ref);
 		codeEl.textContent = code;
 		drawQr(canvas, url);
 		alt.href = url;

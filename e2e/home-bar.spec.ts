@@ -35,6 +35,17 @@ test('shows house tiles with icons', async ({ browser }) => {
 	await context.close();
 });
 
+test('lights are only offered while it is dark', async ({ browser }) => {
+	const { context, page } = await open(browser);
+	await expect(page.locator('.home-tile')).toHaveCount(4);
+	await page.request.get(`${MOCK}/__sun?state=above_horizon`);
+	await page.reload();
+	await expect(page.locator('.home-tile[data-id=garage]')).toBeVisible();
+	await expect(page.locator('.home-tile')).toHaveCount(1);
+	await page.request.get(`${MOCK}/__sun?state=below_horizon`);
+	await context.close();
+});
+
 test('a light toggles with a single tap', async ({ browser }) => {
 	const { context, page } = await open(browser);
 	await page.locator('.home-tile[data-id=licht-garage]').click();

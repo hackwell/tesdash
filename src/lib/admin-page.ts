@@ -19,7 +19,7 @@ async function postJson(url: string, body: unknown, method = 'POST'): Promise<Re
 export function initAdminPage(): void {
 	const list = document.getElementById('device-list')!;
 	const status = document.getElementById('admin-status')!;
-	const code = new URLSearchParams(location.search).get('code');
+	const ref = new URLSearchParams(location.search).get('ref');
 
 	async function loadDevices(): Promise<void> {
 		const res = await fetch('/api/admin/devices', { cache: 'no-store' });
@@ -55,14 +55,29 @@ export function initAdminPage(): void {
 		if (!devices.length) list.append(Object.assign(document.createElement('li'), { textContent: 'Noch keine Geräte.' }));
 	}
 
-	if (code) {
+	async function showPairing(pairingRef: string): Promise<void> {
+		const res = await fetch(`/api/admin/pairing?ref=${encodeURIComponent(pairingRef)}`, { cache: 'no-store' });
+		if (!res.ok) {
+			status.hidden = false;
+			status.textContent = 'Diese Kopplung ist abgelaufen oder schon erledigt. Im Auto neu laden.';
+			return;
+		}
+		const info = (await res.json()) as { ageSeconds: number; userAgent: string };
 		document.getElementById('approve')!.hidden = false;
-		document.getElementById('approve-code')!.textContent = code;
+		document.getElementById('approve-info')!.textContent =
+			`Angefragt vor ${Math.max(1, Math.round(info.ageSeconds / 60))} min · ${info.userAgent.includes('Tesla') ? 'Tesla-Browser' : info.userAgent.slice(0, 80)}`;
+		const codeInput = document.getElementById('approve-code') as HTMLInputElement;
+		codeInput.focus();
+
 		document.getElementById('approve-btn')!.addEventListener('click', async () => {
 			const name = (document.getElementById('approve-name') as HTMLInputElement).value;
-			const res = await postJson('/api/admin/approve', { code, name });
+			const res = await postJson('/api/admin/approve', { ref: pairingRef, code: codeInput.value, name });
+			if (res.status === 400) {
+				toast('Code stimmt nicht. Bitte den Code vom Bildschirm im Auto eintippen.');
+				return;
+			}
 			if (!res.ok) {
-				toast(res.status === 404 ? 'Code abgelaufen. Im Auto neu laden.' : 'Freigabe fehlgeschlagen.');
+				toast('Kopplung abgelaufen. Im Auto neu laden.');
 				return;
 			}
 			const { signedIn } = (await res.json()) as { signedIn?: boolean };
@@ -77,6 +92,8 @@ export function initAdminPage(): void {
 			loadDevices();
 		});
 	}
+
+	if (ref) showPairing(ref);
 
 	document.getElementById('pair-self')!.addEventListener('click', async () => {
 		const res = await postJson('/api/admin/pair-self', { name: navigator.platform ? `Browser (${navigator.platform})` : 'Browser' });

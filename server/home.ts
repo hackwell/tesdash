@@ -15,6 +15,8 @@ export interface Tile {
 	geofenceMeters?: number;
 	/** Icon key, see src/lib/icons.ts. */
 	icon?: string;
+	/** Only show the tile while the sun is below the horizon (HA's sun.sun). */
+	onlyWhenDark?: boolean;
 }
 
 export interface HomeConfig {
@@ -90,8 +92,13 @@ export function createHome(config: HomeConfig, haUrl: string, haToken: string) {
 		return home;
 	}
 
+	/** Unknown sun state counts as dark, so a broken sun entity never hides the lights. */
+	function isDark(sun: HaState | undefined): boolean {
+		return sun?.state !== 'above_horizon';
+	}
+
 	async function snapshot() {
-		const entities = new Set(config.tiles.map((t) => t.entity));
+		const entities = new Set([...config.tiles.map((t) => t.entity), 'sun.sun']);
 		let states = new Map<string, HaState>();
 		let reachable = true;
 		try {
@@ -103,7 +110,7 @@ export function createHome(config: HomeConfig, haUrl: string, haToken: string) {
 		return {
 			enabled: true,
 			reachable,
-			tiles: config.tiles.map((tile) => ({
+			tiles: config.tiles.filter((tile) => !tile.onlyWhenDark || isDark(states.get('sun.sun'))).map((tile) => ({
 				id: tile.id,
 				name: tile.name,
 				domain: tile.entity.split('.')[0],

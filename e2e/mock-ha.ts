@@ -8,6 +8,7 @@ const states = new Map<string, { entity_id: string; state: string; attributes: R
 		['light.0x00178801067e284f', 'off', {}],
 		['light.0x00178801067e2dd1', 'off', {}],
 		['light.aussenbeleuchtung', 'off', {}],
+		['sun.sun', 'below_horizon', {}],
 		['device_tracker.tesla_model_y_location_tracker_2', 'home', { latitude: 50.1005, longitude: 8.6005 }],
 	].map(([id, state, attributes]) => [id as string, { entity_id: id as string, state: state as string, attributes: attributes as Record<string, unknown> }]),
 );
@@ -21,7 +22,12 @@ Bun.serve({
 		if (pathname === '/__reset') {
 			calls.length = 0;
 			states.get('cover.garagentor')!.state = 'closed';
+			states.get('sun.sun')!.state = 'below_horizon';
 			states.get('device_tracker.tesla_model_y_location_tracker_2')!.attributes = { latitude: 50.1005, longitude: 8.6005 };
+			return Response.json({ ok: true });
+		}
+		if (pathname === '/__sun') {
+			states.get('sun.sun')!.state = new URL(req.url).searchParams.get('state') ?? 'below_horizon';
 			return Response.json({ ok: true });
 		}
 		if (pathname === '/__car') {

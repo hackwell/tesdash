@@ -735,3 +735,4 @@ body.is-editing .grid:empty { outline: 1px dashed rgba(255, 255, 255, 0.12); }
 .device-list li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 56px; border-bottom: 1px solid var(--border); }
 .device-list li > div { display: flex; flex-direction: column; }
 .device-meta { font-size: 0.8rem; color: var(--muted); }
+.pair-code-input { font-size: 1.6rem; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; text-align: center; max-width: 12rem; }

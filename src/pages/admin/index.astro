@@ -17,8 +17,10 @@ import '../../styles/dashboard.css';
 		<main class="admin">
 			<section class="admin-approve" id="approve" hidden>
 				<h1 class="pair-title">Gerät freigeben?</h1>
-				<p class="pair-step">Stimmt der Code mit dem im Auto überein?</p>
-				<p class="pair-code" id="approve-code"></p>
+				<p class="pair-step">Nur freigeben, wenn du gerade selbst vor diesem Bildschirm stehst.</p>
+				<p class="device-meta" id="approve-info"></p>
+				<label class="form-label" for="approve-code">Code vom Bildschirm</label>
+				<input class="form-input pair-code-input" id="approve-code" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" />
 				<label class="form-label" for="approve-name">Name</label>
 				<input class="form-input" id="approve-name" value="Tesla" maxlength="60" autocomplete="off" />
 				<div class="form-actions">

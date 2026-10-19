@@ -8,27 +8,37 @@ const fresh = () => createPairing(join(mkdtempSync(join(tmpdir(), 'pair-')), 'de
 
 describe('pairing', () => {
 	it('codes are easy to compare (no 0/O/1/I)', () => {
-		for (let i = 0; i < 200; i++) expect(newCode()).toMatch(/^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/);
+		for (let i = 0; i < 200; i++) expect(newCode()).toMatch(/^[A-HJ-NP-Z2-9]{4}$/);
 	});
 
 	it('start → approve → poll hands out the device token exactly once', () => {
 		const p = fresh();
-		const { code, pollToken } = p.start()!;
+		const { ref, code, pollToken } = p.start('1.2.3.4', 'TeslaBrowser')!;
 		expect(p.poll(pollToken)).toBe('pending');
-		const deviceToken = p.approve(code.toLowerCase(), 'Model Y', 'akadmin');
+		expect(p.describe(ref)).toMatchObject({ userAgent: 'TeslaBrowser' });
+		const deviceToken = p.approve(ref, code.toLowerCase(), 'Model Y', 'akadmin');
 		expect(deviceToken).toBeString();
 		expect(p.poll(pollToken)).toEqual({ deviceToken: deviceToken! });
 		expect(p.poll(pollToken)).toBe('expired');
 		expect(p.authenticate(`${DEVICE_COOKIE}=${encodeURIComponent(deviceToken!)}`)?.name).toBe('Model Y');
 	});
 
-	it('refuses unknown codes, double approval and foreign poll tokens', () => {
+	it('refuses unknown pairings, wrong codes, double approval and foreign poll tokens', () => {
 		const p = fresh();
-		const { code } = p.start()!;
-		expect(p.approve('AAAA-BBBB', 'x', 'akadmin')).toBeNull();
+		const { ref, code } = p.start('1.2.3.4', '')!;
+		expect(p.approve('unknown', code, 'x', 'akadmin')).toBeNull();
+		expect(p.approve(ref, 'ZZZZ' === code ? 'YYYY' : 'ZZZZ', 'x', 'akadmin')).toBe('wrong-code');
 		expect(p.poll('not-the-token')).toBe('expired');
-		expect(p.approve(code, 'x', 'akadmin')).toBeString();
-		expect(p.approve(code, 'x', 'akadmin')).toBeNull();
+		expect(p.approve(ref, code, 'x', 'akadmin')).toBeString();
+		expect(p.approve(ref, code, 'x', 'akadmin')).toBeNull();
+	});
+
+	it('drops a pairing after five wrong codes', () => {
+		const p = fresh();
+		const { ref, code } = p.start('1.2.3.4', '')!;
+		const wrong = code === 'ZZZZ' ? 'YYYY' : 'ZZZZ';
+		for (let i = 0; i < 5; i++) expect(p.approve(ref, wrong, 'x', 'akadmin')).toBe('wrong-code');
+		expect(p.approve(ref, code, 'x', 'akadmin')).toBeNull();
 	});
 
 	it('stores only token hashes and revokes devices', () => {
@@ -42,10 +52,11 @@ describe('pairing', () => {
 		expect(p.authenticate(`${DEVICE_COOKIE}=${token}`)).toBeNull();
 	});
 
-	it('rate-limits pairing starts', () => {
+	it('rate-limits pairing starts per client, not globally', () => {
 		const p = fresh();
-		const started = Array.from({ length: 12 }, () => p.start());
-		expect(started.filter(Boolean)).toHaveLength(10);
+		const flood = Array.from({ length: 8 }, () => p.start('6.6.6.6', ''));
+		expect(flood.filter(Boolean)).toHaveLength(5);
+		expect(p.start('1.2.3.4', '')).not.toBeNull();
 	});
 });
 

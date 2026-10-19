@@ -13,19 +13,22 @@
 			"id": "licht-garage",
 			"name": "Licht Garage",
 			"entity": "light.0x00178801067e284f",
-			"icon": "outdoor-lamp"
+			"icon": "outdoor-lamp",
+			"onlyWhenDark": true
 		},
 		{
 			"id": "licht-haus",
 			"name": "Licht Haus",
 			"entity": "light.0x00178801067e2dd1",
-			"icon": "house-light"
+			"icon": "house-light",
+			"onlyWhenDark": true
 		},
 		{
 			"id": "licht-aussen",
 			"name": "Licht außen",
 			"entity": "light.aussenbeleuchtung",
-			"icon": "light"
+			"icon": "light",
+			"onlyWhenDark": true
 		}
 	]
 }

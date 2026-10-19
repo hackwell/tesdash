@@ -7,6 +7,8 @@ import { load } from 'js-yaml';
 import { validateState, type DashboardState } from '../src/lib/state';
 import { extractColor } from './color';
 import { createHome, HomeError, loadHomeConfig, type TileAction } from './home';
+import { timingSafeEqual } from 'crypto';
+import { canonicalPath } from './paths';
 import { cookie, createPairing, DEVICE_COOKIE, PAIR_COOKIE, parseCookies } from './pairing';
 
 const PORT = Number(process.env.PORT ?? 3000);
@@ -24,11 +26,17 @@ const CALENDAR_STALE_MS = 10 * 60 * 1000;
 const berlinDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin' });
 const DEVICES_FILE = process.env.DEVICES_FILE ?? join(dirname(STATE_FILE), 'devices.json');
 // Authentik usernames allowed to approve devices (header set by forward auth on /admin routes only).
+// The proxy also sends PROXY_AUTH_SECRET on those routes, so containers on the same Docker network
+// cannot forge the username header by talking to this server directly.
+const PROXY_AUTH_SECRET = process.env.PROXY_AUTH_SECRET ?? '';
 const PAIR_APPROVERS = new Set((process.env.PAIR_APPROVERS ?? '').split(',').map((u) => u.trim()).filter(Boolean));
 const DEVICE_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
 const PAIR_MAX_AGE_MS = 5 * 60 * 1000;
 // Reachable without a device: the pairing page and the assets it needs.
-const PUBLIC_PREFIXES = ['/pair', '/_astro/', '/favicon', '/apple-touch-icon', '/android-chrome', '/site.webmanifest'];
+const PUBLIC_DIRS = ['/pair', '/_astro'];
+const PUBLIC_FILES = new Set(['/favicon.ico', '/favicon-16x16.png', '/favicon-32x32.png', '/apple-touch-icon.png', '/android-chrome-192x192.png', '/android-chrome-512x512.png', '/site.webmanifest']);
+
+const under = (path: string, dir: string) => path === dir || path.startsWith(`${dir}/`);
 
 interface StoredState extends DashboardState {
 	revision: number;
@@ -101,16 +109,28 @@ function json(body: unknown, status = 200, headers: Record<string, string> = {})
 	return Response.json(body, { status, headers: { 'Cache-Control': 'no-store', ...headers } });
 }
 
+function fromProxy(req: Request): boolean {
+	const sent = Buffer.from(req.headers.get('x-tesla-proxy-auth') ?? '');
+	const expected = Buffer.from(PROXY_AUTH_SECRET);
+	return expected.length > 0 && sent.length === expected.length && timingSafeEqual(sent, expected);
+}
+
 function approver(req: Request): string | null {
+	if (!fromProxy(req)) return null;
 	const user = req.headers.get('x-authentik-username');
 	return user && PAIR_APPROVERS.has(user) ? user : null;
 }
 
-async function handlePairApi(req: Request, path: string): Promise<Response | null> {
+function clientIp(req: Request, server: { requestIP(req: Request): { address: string } | null }): string {
+	// Traefik sets X-Real-Ip from the TCP peer; without a proxy fall back to the socket address.
+	return req.headers.get('x-real-ip') ?? server.requestIP(req)?.address ?? 'unknown';
+}
+
+async function handlePairApi(req: Request, path: string, ip: string): Promise<Response | null> {
 	if (path === '/api/pair/start' && req.method === 'POST') {
-		const started = pairing.start();
+		const started = pairing.start(ip, req.headers.get('user-agent') ?? '');
 		if (!started) return json({ error: 'too many pairing attempts' }, 429);
-		return json({ code: started.code }, 200, { 'Set-Cookie': cookie(PAIR_COOKIE, started.pollToken, PAIR_MAX_AGE_MS) });
+		return json({ ref: started.ref, code: started.code }, 200, { 'Set-Cookie': cookie(PAIR_COOKIE, started.pollToken, PAIR_MAX_AGE_MS) });
 	}
 	if (path === '/api/pair/status' && req.method === 'GET') {
 		const result = pairing.poll(parseCookies(req.headers.get('cookie'))[PAIR_COOKIE]);
@@ -126,17 +146,23 @@ async function handleAdminApi(req: Request, path: string): Promise<Response> {
 
 	if (path === '/api/admin/devices' && req.method === 'GET') return json({ user, devices: pairing.list() });
 
+	if (path === '/api/admin/pairing' && req.method === 'GET') {
+		const info = pairing.describe(new URL(req.url).searchParams.get('ref') ?? '');
+		return info ? json(info) : json({ error: 'unknown or expired' }, 404);
+	}
+
 	if (path === '/api/admin/approve' && req.method === 'POST') {
-		let body: { code?: string; name?: string };
+		let body: { ref?: string; code?: string; name?: string };
 		try {
 			body = (await readJson(req)) as typeof body;
 		} catch {
 			return json({ error: 'invalid JSON' }, 400);
 		}
 		const pollToken = parseCookies(req.headers.get('cookie'))[PAIR_COOKIE];
-		const sameBrowser = pairing.startedBy(body.code ?? '', pollToken);
-		const deviceToken = pairing.approve(body.code ?? '', body.name ?? 'Tesla', user);
-		if (!deviceToken) return json({ error: 'unknown or expired code' }, 404);
+		const sameBrowser = pairing.startedBy(body.ref ?? '', pollToken);
+		const deviceToken = pairing.approve(body.ref ?? '', body.code ?? '', body.name ?? 'Tesla', user, sameBrowser);
+		if (deviceToken === 'wrong-code') return json({ error: 'wrong code' }, 400);
+		if (!deviceToken) return json({ error: 'unknown or expired' }, 404);
 		console.log(`[pair] ${user} approved a device`);
 		if (!sameBrowser) return json({ ok: true });
 		// Approved in the browser that showed the code: sign it in directly.
@@ -232,13 +258,9 @@ async function handleApi(req: Request, path: string): Promise<Response> {
 }
 
 async function serveStatic(path: string): Promise<Response> {
-	let relative: string;
-	try {
-		relative = decodeURIComponent(path);
-		if (relative.endsWith('/')) relative += 'index.html';
-	} catch {
-		return new Response('Bad request', { status: 400 });
-	}
+	// `path` is already canonical (decoded, no dot segments).
+	let relative = path;
+	if (relative.endsWith('/')) relative += 'index.html';
 	let filePath = normalize(join(DIST_DIR, relative));
 	// "/pair" -> "/pair/index.html"
 	if (!/\.[a-z0-9]+$/i.test(relative) && !(await Bun.file(filePath).exists())) filePath = join(filePath, 'index.html');
@@ -249,15 +271,16 @@ async function serveStatic(path: string): Promise<Response> {
 	return new Response(file, { headers: { 'Cache-Control': cache } });
 }
 
-async function handle(req: Request): Promise<Response> {
-	const { pathname } = new URL(req.url);
+async function handle(req: Request, server: Parameters<typeof clientIp>[1]): Promise<Response> {
+	const pathname = canonicalPath(new URL(req.url).pathname);
+	if (!pathname) return new Response('Bad request', { status: 400 });
 
-	if (pathname.startsWith('/api/admin/')) return handleAdminApi(req, pathname);
-	if (pathname.startsWith('/api/pair/')) return (await handlePairApi(req, pathname)) ?? json({ error: 'not found' }, 404);
-	if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+	if (under(pathname, '/api/admin')) return handleAdminApi(req, pathname);
+	if (under(pathname, '/api/pair')) return (await handlePairApi(req, pathname, clientIp(req, server))) ?? json({ error: 'not found' }, 404);
+	if (under(pathname, '/admin')) {
 		return approver(req) ? serveStatic(pathname) : new Response('Forbidden', { status: 403 });
 	}
-	if (PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return serveStatic(pathname);
+	if (PUBLIC_DIRS.some((dir) => under(pathname, dir)) || PUBLIC_FILES.has(pathname)) return serveStatic(pathname);
 
 	const device = pairing.authenticate(req.headers.get('cookie'));
 	if (!device) {
@@ -267,7 +290,7 @@ async function handle(req: Request): Promise<Response> {
 	return pathname.startsWith('/api/') ? handleApi(req, pathname) : serveStatic(pathname);
 }
 
-Bun.serve({ port: PORT, fetch: handle });
+Bun.serve({ port: PORT, fetch: (req, server) => handle(req, server) });
 
 console.log(`[server] listening on :${PORT}, state ${STATE_FILE}, ${PAIR_APPROVERS.size} approver(s)`);
-if (!PAIR_APPROVERS.size) console.warn('[pair] PAIR_APPROVERS is empty: no device can be paired');
+if (!PAIR_APPROVERS.size || !PROXY_AUTH_SECRET) console.warn('[pair] PAIR_APPROVERS or PROXY_AUTH_SECRET missing: no device can be paired');

@@ -1,7 +1,7 @@
 import { test as base, type Browser, type BrowserContextOptions } from '@playwright/test';
 
 // Without a reverse proxy in tests, the Authentik header is sent directly (the proxy normally sets it on /admin only).
-export const APPROVER = { 'X-authentik-username': 'tester' };
+export const APPROVER = { 'X-authentik-username': 'tester', 'X-Tesla-Proxy-Auth': 'test-proxy-secret' };
 
 /** A browser context that is already paired, like a car after the QR-code login. */
 export async function pairedContext(browser: Browser, options: BrowserContextOptions = {}) {
