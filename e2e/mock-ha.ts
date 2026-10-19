@@ -5,9 +5,7 @@ export const HOME = { latitude: 50.1, longitude: 8.6 };
 const states = new Map<string, { entity_id: string; state: string; attributes: Record<string, unknown> }>(
 	[
 		['cover.garagentor', 'closed', {}],
-		['light.0x00178801067e284f', 'off', {}],
-		['light.0x00178801067e2dd1', 'off', {}],
-		['light.aussenbeleuchtung', 'off', {}],
+		['light.hund', 'off', {}],
 		['sun.sun', 'below_horizon', {}],
 		['device_tracker.tesla_model_y_location_tracker_2', 'home', { latitude: 50.1005, longitude: 8.6005 }],
 	].map(([id, state, attributes]) => [id as string, { entity_id: id as string, state: state as string, attributes: attributes as Record<string, unknown> }]),
@@ -23,6 +21,7 @@ Bun.serve({
 			calls.length = 0;
 			states.get('cover.garagentor')!.state = 'closed';
 			states.get('sun.sun')!.state = 'below_horizon';
+			states.get('light.hund')!.state = 'off';
 			states.get('device_tracker.tesla_model_y_location_tracker_2')!.attributes = { latitude: 50.1005, longitude: 8.6005 };
 			return Response.json({ ok: true });
 		}

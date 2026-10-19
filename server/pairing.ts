@@ -109,8 +109,10 @@ export function createPairing(devicesFile: string) {
 		const now = Date.now();
 		prune(now);
 		const recent = (startTimes.get(clientIp) ?? []).filter((t) => now - t < 60_000);
-		if (recent.length >= START_LIMIT_PER_MIN || pairings.size >= MAX_PENDING) return null;
+		if (recent.length >= START_LIMIT_PER_MIN) return null;
 		startTimes.set(clientIp, [...recent, now]);
+		// A flood (e.g. with forged client IPs) evicts the oldest pending pairing instead of locking everyone out.
+		if (pairings.size >= MAX_PENDING) pairings.delete(pairings.keys().next().value!);
 
 		const ref = randomBytes(16).toString('hex');
 		const pollToken = token();

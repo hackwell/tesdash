@@ -31,13 +31,13 @@ test('shows house tiles with icons', async ({ browser }) => {
 	const { context, page } = await open(browser);
 	await expect(page.locator('.home-tile[data-id=garage]')).toContainText('Geschlossen');
 	await expect(page.locator('.home-tile[data-id=garage]')).toContainText('Halten zum Öffnen');
-	await expect(page.locator('.home-tile .home-tile-icon')).toHaveCount(4);
+	await expect(page.locator('.home-tile .home-tile-icon')).toHaveCount(2);
 	await context.close();
 });
 
 test('lights are only offered while it is dark', async ({ browser }) => {
 	const { context, page } = await open(browser);
-	await expect(page.locator('.home-tile')).toHaveCount(4);
+	await expect(page.locator('.home-tile')).toHaveCount(2);
 	await page.request.get(`${MOCK}/__sun?state=above_horizon`);
 	await page.reload();
 	await expect(page.locator('.home-tile[data-id=garage]')).toBeVisible();
@@ -48,9 +48,9 @@ test('lights are only offered while it is dark', async ({ browser }) => {
 
 test('a light toggles with a single tap', async ({ browser }) => {
 	const { context, page } = await open(browser);
-	await page.locator('.home-tile[data-id=licht-garage]').click();
-	await expect.poll(() => calls(page)).toEqual([{ service: 'light.toggle', entity_id: 'light.0x00178801067e284f' }]);
-	await expect(page.locator('.home-tile[data-id=licht-garage]')).toHaveAttribute('data-state', 'on');
+	await page.locator('.home-tile[data-id=aussenlicht]').click();
+	await expect.poll(() => calls(page)).toEqual([{ service: 'light.toggle', entity_id: 'light.hund' }]);
+	await expect(page.locator('.home-tile[data-id=aussenlicht]')).toHaveAttribute('data-state', 'on');
 	await context.close();
 });
 
@@ -96,7 +96,7 @@ test('API rejects actions that are not configured', async ({ request }) => {
 	await request.get(`${MOCK}/__reset`);
 	const unknown = await request.post('/api/home/tiles/haustuer', { data: { action: 'toggle' } });
 	expect(unknown.status()).toBe(404);
-	const wrongAction = await request.post('/api/home/tiles/licht-garage', { data: { action: 'open' } });
+	const wrongAction = await request.post('/api/home/tiles/aussenlicht', { data: { action: 'open' } });
 	expect(wrongAction.status()).toBe(400);
 	// A position sent by the client is ignored: the car is away per HA, so this is refused.
 	await request.get(`${MOCK}/__car?lat=50.2&lon=8.6`);

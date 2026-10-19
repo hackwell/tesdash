@@ -58,6 +58,12 @@ describe('pairing', () => {
 		expect(flood.filter(Boolean)).toHaveLength(5);
 		expect(p.start('1.2.3.4', '')).not.toBeNull();
 	});
+
+	it('a flood from many IPs evicts old pairings but never blocks new ones', () => {
+		const p = fresh();
+		for (let i = 0; i < 150; i++) p.start(`10.0.${Math.floor(i / 250)}.${i % 250}`, '');
+		expect(p.start('1.2.3.4', '')).not.toBeNull();
+	});
 });
 
 describe('parseCookies', () => {
