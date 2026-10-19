@@ -1,4 +1,5 @@
-import { test, expect, type Browser, type Page } from '@playwright/test';
+import { test, expect, pairedContext } from './fixtures';
+import type { Browser, Page } from '@playwright/test';
 
 // All actions here hit e2e/mock-ha.ts, never a real Home Assistant.
 const MOCK = 'http://localhost:4174';
@@ -8,7 +9,7 @@ async function calls(page: Page) {
 }
 
 async function open(browser: Browser) {
-	const context = await browser.newContext();
+	const context = await pairedContext(browser);
 	const page = await context.newPage();
 	await page.request.get(`${MOCK}/__reset`);
 	await page.goto('/');

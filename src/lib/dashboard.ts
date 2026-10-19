@@ -36,6 +36,10 @@ export function initDashboard(): void {
 
 	async function fetchState(): Promise<void> {
 		const res = await fetch('/api/state', { cache: 'no-store' });
+		if (res.status === 401) {
+			location.replace('/pair/'); // device was removed or its pairing expired
+			return;
+		}
 		if (!res.ok) throw new Error(`HTTP ${res.status}`);
 		state = await res.json();
 		render();

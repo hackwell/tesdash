@@ -1,0 +1,47 @@
+---
+import { Font } from 'astro:assets';
+import '../../styles/dashboard.css';
+---
+
+<!doctype html>
+<html lang="de">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex, nofollow" />
+		<title>Geräte</title>
+		<link rel="icon" href="/favicon.ico" sizes="any" />
+		<Font cssVariable="--font-geist" preload />
+	</head>
+	<body>
+		<main class="admin">
+			<section class="admin-approve" id="approve" hidden>
+				<h1 class="pair-title">Gerät freigeben?</h1>
+				<p class="pair-step">Stimmt der Code mit dem im Auto überein?</p>
+				<p class="pair-code" id="approve-code"></p>
+				<label class="form-label" for="approve-name">Name</label>
+				<input class="form-input" id="approve-name" value="Tesla" maxlength="60" autocomplete="off" />
+				<div class="form-actions">
+					<a class="form-btn form-btn-cancel admin-link-btn" href="/admin/">Abbrechen</a>
+					<button class="form-btn form-btn-submit" id="approve-btn" type="button">Freigeben</button>
+				</div>
+			</section>
+
+			<p class="pair-status" id="admin-status" hidden></p>
+
+			<section class="admin-devices">
+				<h2 class="category-title">Gekoppelte Geräte</h2>
+				<ul class="device-list" id="device-list"></ul>
+				<div class="form-actions">
+					<button class="form-btn form-btn-cancel" id="pair-self" type="button">Diesen Browser koppeln</button>
+					<a class="form-btn form-btn-submit admin-link-btn" href="/">Zum Dashboard</a>
+				</div>
+			</section>
+		</main>
+		<div class="toast" id="toast" role="status" aria-live="polite"></div>
+		<script>
+			import { initAdminPage } from '../../lib/admin-page';
+			initAdminPage();
+		</script>
+	</body>
+</html>

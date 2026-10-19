@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { mkdirSync, rmSync, writeFileSync } from 'fs';
 
 const FILE = '.e2e-data/calendar.json';

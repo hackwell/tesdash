@@ -1,0 +1,35 @@
+---
+import { Font } from 'astro:assets';
+import '../../styles/dashboard.css';
+---
+
+<!doctype html>
+<html lang="de">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex, nofollow" />
+		<title>Tesla koppeln</title>
+		<link rel="icon" href="/favicon.ico" sizes="any" />
+		<Font cssVariable="--font-geist" preload />
+	</head>
+	<body>
+		<main class="pair">
+			<div class="pair-card">
+				<canvas id="pair-qr" class="pair-qr" width="232" height="232" aria-label="QR-Code zum Koppeln"></canvas>
+				<div class="pair-text">
+					<h1 class="pair-title">Dieses Auto koppeln</h1>
+					<p class="pair-step">QR-Code mit dem Handy scannen und dort freigeben.</p>
+					<p class="pair-code-label">Code zum Vergleichen</p>
+					<p class="pair-code" id="pair-code">––––-––––</p>
+					<p class="pair-status" id="pair-status">Code wird erstellt …</p>
+					<a class="pair-alt" id="pair-alt" href="/admin/">Stattdessen hier mit Authentik anmelden</a>
+				</div>
+			</div>
+		</main>
+		<script>
+			import { initPairPage } from '../../lib/pair-page';
+			initPairPage();
+		</script>
+	</body>
+</html>

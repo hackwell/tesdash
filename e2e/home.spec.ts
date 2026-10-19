@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, pairedContext } from './fixtures';
+import type { Page } from '@playwright/test';
 
 async function enterEditMode(page: Page) {
 	await page.getByRole('button', { name: 'Bearbeiten', exact: true }).click();
@@ -33,7 +34,7 @@ test('added app is stored on the server, not in the browser', async ({ page, bro
 	expect(await page.evaluate(() => localStorage.length)).toBe(0);
 
 	// A fresh browser context (think: the car) sees the same app.
-	const other = await browser.newContext();
+	const other = await pairedContext(browser);
 	const otherPage = await other.newPage();
 	await otherPage.goto('/');
 	const otherCard = otherPage.locator('.card', { hasText: 'Home Assistant' });
@@ -103,7 +104,7 @@ test('dragging a card into another category persists', async ({ page }) => {
 
 test('a stale tab gets the newer state instead of overwriting it', async ({ page, browser }) => {
 	await page.goto('/');
-	const other = await browser.newContext();
+	const other = await pairedContext(browser);
 	const otherPage = await other.newPage();
 	await otherPage.goto('/');
 	await enterEditMode(otherPage);
@@ -121,7 +122,7 @@ test('a stale tab gets the newer state instead of overwriting it', async ({ page
 });
 
 test('touch: long press picks a card up, a quick swipe does not', async ({ browser }) => {
-	const context = await browser.newContext({ hasTouch: true, viewport: { width: 1920, height: 2000 } });
+	const context = await pairedContext(browser, { hasTouch: true, viewport: { width: 1920, height: 2000 } });
 	const page = await context.newPage();
 	await page.goto('/');
 	await enterEditMode(page);
