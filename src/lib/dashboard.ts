@@ -1,5 +1,6 @@
 // Client side of the dashboard: renders the shared server state and writes every change back.
 import { dominantColor } from './color';
+import { brandSlugs, findLogos } from './logo-suggest';
 import { toast } from './toast';
 import { launchHref, normalizeUrl, type App, type Category, type DashboardState } from './state';
 
@@ -232,6 +233,7 @@ export function initDashboard(): void {
 		form.error.hidden = true;
 		syncNewCategoryRow();
 
+		suggestLogos();
 		$('app-form-title').textContent = found ? 'App bearbeiten' : 'App hinzufügen';
 		$('app-submit').textContent = found ? 'Speichern' : 'Hinzufügen';
 		$('app-delete').hidden = !found;
@@ -240,6 +242,69 @@ export function initDashboard(): void {
 	}
 
 	form.category.addEventListener('change', syncNewCategoryRow);
+
+	// ── Logo suggestions: paste a link, pick a logo, colour and name follow ──
+
+	let bundledLogos: string[] | null = null;
+	let suggestRun = 0;
+	let suggestTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function capitalize(slug: string): string {
+		return slug.charAt(0).toUpperCase() + slug.slice(1);
+	}
+
+	async function chooseLogo(url: string): Promise<void> {
+		form.logo.value = url;
+		for (const button of $('logo-suggest-list').querySelectorAll<HTMLElement>('.logo-suggest-item')) {
+			button.classList.toggle('is-selected', button.dataset.url === url);
+		}
+		if (!form.name.value.trim()) {
+			const [slug] = brandSlugs(form.url.value);
+			if (slug) form.name.value = capitalize(slug);
+		}
+		if (form.autoColor.checked) form.color.value = await resolveColor(url);
+	}
+
+	async function suggestLogos(): Promise<void> {
+		const run = ++suggestRun;
+		const box = $('logo-suggest');
+		const list = $('logo-suggest-list');
+		if (!form.url.value.trim()) {
+			box.hidden = true;
+			return;
+		}
+		box.hidden = false;
+		$('logo-suggest-label').textContent = 'Suche Logos …';
+		list.replaceChildren();
+		if (!bundledLogos) bundledLogos = await fetch('/api/logos').then((r) => (r.ok ? r.json() : [])).catch(() => []);
+		const found = await findLogos(form.url.value, form.name.value, bundledLogos!);
+		if (run !== suggestRun) return; // the URL changed meanwhile
+
+		$('logo-suggest-label').textContent = found.length ? 'Logo-Vorschläge – antippen zum Übernehmen' : 'Keine Logos gefunden';
+		list.replaceChildren(
+			...found.map((candidate) => {
+				const button = document.createElement('button');
+				button.type = 'button';
+				button.className = `logo-suggest-item${form.logo.value === candidate.url ? ' is-selected' : ''}`;
+				button.dataset.url = candidate.url;
+				button.title = candidate.source;
+				const img = document.createElement('img');
+				img.src = candidate.url;
+				img.alt = candidate.source;
+				button.append(img);
+				button.addEventListener('click', () => chooseLogo(candidate.url));
+				return button;
+			}),
+		);
+	}
+
+	function scheduleSuggest(): void {
+		clearTimeout(suggestTimer);
+		suggestTimer = setTimeout(suggestLogos, 600);
+	}
+	form.url.addEventListener('input', scheduleSuggest);
+	form.name.addEventListener('change', scheduleSuggest);
+	form.logo.addEventListener('change', () => chooseLogo(form.logo.value.trim()));
 	form.color.addEventListener('input', () => { form.autoColor.checked = false; });
 
 	function showFormError(node: HTMLElement, message: string): void {

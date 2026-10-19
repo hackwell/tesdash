@@ -743,3 +743,22 @@ body.is-editing .grid:empty { outline: 1px dashed rgba(255, 255, 255, 0.12); }
 .home-tile[data-state='partial'] { border-color: rgba(234, 179, 8, 0.45); }
 .home-tile[data-state='partial'] .home-tile-state,
 .home-tile[data-state='partial'] .home-tile-icon { color: #ca9a2c; }
+
+/* ── Logo suggestions in the app form ── */
+.logo-suggest { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; }
+.logo-suggest-label { font-size: 0.75rem; color: var(--muted); }
+.logo-suggest-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.logo-suggest-item {
+	width: 64px;
+	height: 64px;
+	padding: 8px;
+	border-radius: 12px;
+	background: var(--surface);
+	border: 2px solid var(--border);
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.logo-suggest-item img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.logo-suggest-item.is-selected { border-color: #E50914; background: var(--surface-2); }

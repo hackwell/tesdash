@@ -1,7 +1,7 @@
 // Serves the built dashboard and persists its single shared state as a JSON file.
 // Access: every device needs a device cookie from pairing (server/pairing.ts). Only /admin and /api/admin sit
 // behind Authentik forward auth; the reverse proxy must strip X-authentik-* headers on every other route.
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'fs';
 import { dirname, join, normalize } from 'path';
 import { load } from 'js-yaml';
 import { validateState, type DashboardState } from '../src/lib/state';
@@ -218,6 +218,13 @@ async function handleApi(req: Request, path: string): Promise<Response> {
 		} catch (err) {
 			return json({ error: (err as Error).message }, 400);
 		}
+	}
+
+	if (path === '/api/logos' && req.method === 'GET') {
+		// Bundled logos, offered as suggestions when adding an app.
+		const dir = join(DIST_DIR, 'logos');
+		const files = existsSync(dir) ? readdirSync(dir).filter((f) => /\.(svg|png|webp|jpe?g)$/i.test(f)) : [];
+		return json(files.map((f) => `/logos/${f}`));
 	}
 
 	if (path === '/api/calendar' && req.method === 'GET') {
