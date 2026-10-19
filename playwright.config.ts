@@ -13,10 +13,18 @@ export default defineConfig({
 		trace: 'retain-on-failure'
 	},
 	projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-	webServer: {
-		command: 'rm -rf .e2e-data && STATE_FILE=.e2e-data/state.json PORT=4173 bun server/index.ts',
-		url: 'http://localhost:4173/',
-		reuseExistingServer: false,
-		timeout: 30_000
-	}
+	webServer: [
+		{
+			command: 'bun e2e/mock-ha.ts',
+			url: 'http://localhost:4174/__calls',
+			reuseExistingServer: false,
+		},
+		{
+			// HA_URL points at the mock: tests must never reach the real Home Assistant.
+			command: 'rm -rf .e2e-data && STATE_FILE=.e2e-data/state.json PORT=4173 HOME_CONFIG=home.example.json HA_URL=http://localhost:4174 HA_TOKEN=test-token bun server/index.ts',
+			url: 'http://localhost:4173/',
+			reuseExistingServer: false,
+			timeout: 30_000
+		}
+	]
 });

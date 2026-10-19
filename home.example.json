@@ -1,0 +1,14 @@
+{
+	"status": [
+		{ "label": "Akku", "entity": "sensor.tesla_model_y_battery_2", "unit": "%" },
+		{ "label": "Reichweite", "entity": "sensor.tesla_model_y_range_2", "unit": "km", "decimals": 0 },
+		{ "label": "Laden", "entity": "sensor.tesla_model_y_charger_power_2", "unit": "kW", "decimals": 1 },
+		{ "label": "Außen", "entity": "weather.pirateweather", "attribute": "temperature", "unit": "°C", "decimals": 0 }
+	],
+	"tiles": [
+		{ "id": "garage", "name": "Garage", "entity": "cover.garagentor", "hold": true, "geofenceMeters": 300 },
+		{ "id": "licht-garage", "name": "Licht Garage", "entity": "light.0x00178801067e284f" },
+		{ "id": "licht-haus", "name": "Licht Haus", "entity": "light.0x00178801067e2dd1" },
+		{ "id": "licht-aussen", "name": "Licht außen", "entity": "light.aussenbeleuchtung" }
+	]
+}

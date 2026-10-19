@@ -3,9 +3,13 @@
 [hidden] { display: none !important; }
 
 :root {
-	--bg: #0A0A0F;
-	--surface: rgba(255, 255, 255, 0.04);
-	--border: rgba(255, 255, 255, 0.08);
+	color-scheme: dark;
+	--bg: #111215;
+	--surface: #1c1d21;
+	--surface-2: #26272c;
+	--border: #2c2d33;
+	--open: #f59e0b;
+	--closed: #22c55e;
 	--text: #F8FAFC;
 	--muted: #94a3b8;
 	--red: #E50914;
@@ -26,292 +30,212 @@ body {
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
 
-/* ── Ambient background ── */
-.ambient {
-	position: fixed;
-	inset: 0;
-	pointer-events: none;
-	z-index: 0;
-	overflow: hidden;
-}
-
-.blob {
-	position: absolute;
-	border-radius: 50%;
-	filter: blur(120px);
-	opacity: 0.18;
-}
-
-.blob-1 {
-	width: 600px; height: 600px;
-	background: #E50914;
-	top: -200px; left: -100px;
-}
-
-.blob-2 {
-	width: 500px; height: 500px;
-	background: #312E81;
-	bottom: -150px; right: -100px;
-}
-
-.blob-3 {
-	width: 400px; height: 400px;
-	background: #0EA5E9;
-	top: 40%; left: 50%;
-	transform: translate(-50%, -50%);
-	opacity: 0.08;
-}
-
-/* ── Layout ── */
+/* ── Layout: designed for the car's 773 × 601 split view first ── */
 main {
-	position: relative;
-	z-index: 1;
-	max-width: 1800px;
+	max-width: 1400px;
 	margin: 0 auto;
-	padding: 0.4rem 2.5rem;
+	padding: 0.75rem 1rem 5rem;
 }
 
 /* ── Drag & drop ── */
 .drag-handle {
-	display: inline-flex;
 	align-items: center;
-	padding: 2px 4px;
-	margin-right: 0.5rem;
-	border-radius: 4px;
-	color: #334155;
+	justify-content: center;
+	width: 44px;
+	height: 44px;
+	margin: -0.5rem 0.25rem -0.5rem -0.5rem;
+	border-radius: 8px;
 	cursor: grab;
-	transition: color 150ms ease;
-	vertical-align: middle;
 	touch-action: none;
 }
 
-.drag-handle:hover { color: #94a3b8; }
-.drag-handle:active { cursor: grabbing; }
+.drag-handle svg { width: 18px; height: 18px; display: block; }
 
-.drag-handle svg {
-	width: 14px;
-	height: 14px;
-	display: block;
-}
-
-.category.is-dragging {
-	opacity: 0.35;
-}
-
-/* Ghost element during touch drag */
 .touch-ghost {
 	position: fixed;
 	z-index: 999;
 	pointer-events: none;
-	opacity: 0.85;
-	box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-	border-radius: 12px;
-	background: #0A0A0F;
+	opacity: 0.9;
+	box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+	border-radius: 14px;
+	background: var(--bg);
 	overflow: hidden;
 }
 
 /* ── Categories ── */
-.category {
-	margin-bottom: 2.5rem;
-}
+.category { margin-bottom: 1.25rem; }
 
 .category-title {
-	font-size: 0.75rem;
+	font-size: 0.7rem;
 	font-weight: 700;
 	letter-spacing: 0.12em;
 	text-transform: uppercase;
-	color: #94a3b8;
-	margin-bottom: 1rem;
-	padding-left: 0.25rem;
-	border-left: 3px solid #E50914;
-	padding-left: 0.75rem;
+	color: var(--muted);
+	margin-bottom: 0.6rem;
+	min-height: 1.5rem;
 }
 
 /* ── Grid ── */
 .grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-	gap: 1.25rem;
+	grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+	gap: 0.6rem;
 }
 
-/* Large screens (Tesla ~1920px) */
-@media (min-width: 1400px) {
-	.grid {
-		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-		gap: 1.5rem;
-	}
+@media (min-width: 1100px) {
+	.grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; }
 }
 
-/* Tablet / landscape */
-@media (max-width: 768px) {
-	.grid {
-		grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-		gap: 1rem;
-	}
-}
-
-/* Small mobile */
-@media (max-width: 480px) {
-	.grid {
-		grid-template-columns: repeat(2, 1fr);
-		gap: 0.75rem;
-	}
-}
-
-/* ── Card ── */
+/* ── Card: flat, no hover-only effects (the car reports hover but is a touchscreen) ── */
 .card {
-	--mouse-x: 50%;
-	--mouse-y: 50%;
 	--app-color: #fff;
-
 	position: relative;
-	border-radius: 20px;
+	display: block;
+	border-radius: 14px;
 	background: var(--surface);
 	border: 1px solid var(--border);
-	backdrop-filter: blur(16px);
-	-webkit-backdrop-filter: blur(16px);
 	overflow: hidden;
 	text-decoration: none;
-	cursor: pointer;
-	transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+	color: inherit;
 	aspect-ratio: 1;
-	/* Minimum tap target size */
-	min-height: 160px;
+	transition: transform 100ms ease, background 100ms ease;
 }
 
-.card:hover .card-inner { opacity: 1; }
-
-.card:hover {
-	transform: scale(1.04) translateY(-3px);
-	border-color: color-mix(in srgb, var(--app-color) 50%, transparent);
-	box-shadow:
-		0 0 0 1px color-mix(in srgb, var(--app-color) 20%, transparent),
-		0 24px 48px -12px color-mix(in srgb, var(--app-color) 35%, transparent),
-		0 0 100px -20px color-mix(in srgb, var(--app-color) 20%, transparent);
-}
-
-.card:active,
-.card.touching {
-	transform: scale(0.96);
-}
-
-.card.touching .spotlight {
-	opacity: 1;
-}
-
-.card.touching .border-glow {
-	opacity: 1;
-}
-
-/* Spotlight radial gradient follows cursor */
-.spotlight {
+.card::after {
+	content: '';
 	position: absolute;
-	inset: 0;
-	opacity: 0;
-	transition: opacity 300ms ease;
-	background: radial-gradient(
-		circle at var(--mouse-x) var(--mouse-y),
-		color-mix(in srgb, var(--app-color) 15%, transparent) 0%,
-		transparent 60%
-	);
-	pointer-events: none;
-	border-radius: inherit;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 3px;
+	background: var(--app-color);
+	opacity: 0.85;
 }
 
-.card:hover .spotlight {
-	opacity: 1;
-}
+.card:active { transform: scale(0.96); background: var(--surface-2); }
 
-/* Animated border glow */
-.border-glow {
-	position: absolute;
-	inset: -1px;
-	border-radius: inherit;
-	background: radial-gradient(
-		circle at var(--mouse-x) var(--mouse-y),
-		color-mix(in srgb, var(--app-color) 40%, transparent),
-		transparent 60%
-	);
-	opacity: 0;
-	transition: opacity 300ms ease;
-	pointer-events: none;
-	z-index: -1;
-}
-
-.card:hover .border-glow {
-	opacity: 1;
-}
-
-/* Card content */
 .card-inner {
-	position: relative;
-	z-index: 1;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	opacity: 0.82;
-	transition: opacity 200ms ease;
 	justify-content: center;
-	gap: 1rem;
+	gap: 0.55rem;
 	height: 100%;
-	padding: 1.5rem;
+	padding: 0.75rem 0.5rem;
 }
 
-.icon-wrap {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-}
+.icon-wrap { display: flex; align-items: center; justify-content: center; }
 
-.icon-wrap img {
-	width: 80px;
-	height: 80px;
-	object-fit: contain;
-	transition: transform 200ms ease;
-}
-
-.card:hover .icon-wrap img {
-	transform: scale(1.08);
-}
+.icon-wrap img { width: 48px; height: 48px; object-fit: contain; }
 
 .icon-fallback {
 	display: none;
 	align-items: center;
 	justify-content: center;
-	width: 80px;
-	height: 80px;
-	font-size: 3rem;
+	width: 48px;
+	height: 48px;
+	font-size: 1.9rem;
 	font-weight: 700;
 }
 
 .app-name {
-	font-size: 1rem;
+	font-size: 0.8rem;
 	font-weight: 600;
-	color: rgba(248, 250, 252, 0.9);
+	color: rgba(248, 250, 252, 0.88);
 	text-align: center;
-	line-height: 1.3;
-	letter-spacing: 0.02em;
+	line-height: 1.2;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
 }
 
-@media (min-width: 1400px) {
-	.icon-wrap img { width: 100px; height: 100px; }
-	.icon-fallback { width: 100px; height: 100px; font-size: 3.5rem; }
-	.app-name { font-size: 1.1rem; }
-	.card-inner { gap: 1.25rem; padding: 2rem; }
+@media (min-width: 1100px) {
+	.icon-wrap img, .icon-fallback { width: 60px; height: 60px; }
+	.app-name { font-size: 0.9rem; }
 }
 
-@media (max-width: 480px) {
-	.icon-wrap img { width: 60px; height: 60px; }
-	.icon-fallback { width: 60px; height: 60px; font-size: 2.25rem; }
-	.app-name { font-size: 0.875rem; }
+/* ── Home bar: car status + house controls ── */
+.home { margin-bottom: 1.25rem; }
+
+.home-status {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem 1.1rem;
+	font-size: 0.85rem;
+	color: var(--muted);
+	margin-bottom: 0.6rem;
 }
+
+.home-status b { color: var(--text); font-weight: 600; margin-left: 0.3rem; }
+.home-status .home-offline { color: var(--open); }
+
+.home-tiles {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+	gap: 0.6rem;
+}
+
+.home-tile--wide { grid-column: span 2; }
+
+.home-tile {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	align-items: flex-start;
+	min-height: 96px;
+	padding: 0.8rem 0.9rem;
+	border-radius: 14px;
+	background: var(--surface);
+	border: 1px solid var(--border);
+	color: var(--text);
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+	overflow: hidden;
+	touch-action: manipulation;
+	user-select: none;
+	-webkit-user-select: none;
+	-webkit-touch-callout: none;
+}
+
+.home-tile:active { background: var(--surface-2); }
+.home-tile:disabled { cursor: default; opacity: 0.55; }
+
+.home-tile-name { font-size: 0.95rem; font-weight: 700; }
+.home-tile-state { font-size: 0.8rem; color: var(--muted); }
+.home-tile-hint { font-size: 0.72rem; color: var(--muted); }
+
+.home-tile[data-state='on'] { border-color: #eab308; }
+.home-tile[data-state='on'] .home-tile-state { color: #facc15; }
+.home-tile[data-state='open'],
+.home-tile[data-state='opening'],
+.home-tile[data-state='closing'] { border-color: var(--open); }
+.home-tile[data-state='open'] .home-tile-state,
+.home-tile[data-state='opening'] .home-tile-state,
+.home-tile[data-state='closing'] .home-tile-state { color: var(--open); }
+.home-tile[data-state='closed'] .home-tile-state { color: var(--closed); }
+
+/* Hold-to-activate progress fills the tile from the left. */
+.home-tile-progress {
+	position: absolute;
+	inset: 0;
+	background: rgba(229, 9, 20, 0.28);
+	transform: scaleX(0);
+	transform-origin: left;
+	pointer-events: none;
+}
+
+.home-tile.is-holding .home-tile-progress { transform: scaleX(1); transition: transform var(--hold-ms, 900ms) linear; }
+.home-tile > :not(.home-tile-progress) { position: relative; }
 
 /* ── FAB ── */
 .fab-wrap {
 	position: fixed;
-	bottom: 2rem;
-	right: 2rem;
+	bottom: 1rem;
+	right: 1rem;
 	z-index: 40;
 	display: flex;
 	flex-direction: column;
@@ -326,8 +250,8 @@ main {
 
 .fab {
 	position: relative;
-	width: 72px;
-	height: 72px;
+	width: 56px;
+	height: 56px;
 	border-radius: 50%;
 	background: #E50914;
 	border: none;
@@ -336,19 +260,13 @@ main {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	box-shadow: 0 8px 28px rgba(229, 9, 20, 0.45);
-	transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease;
-}
-
-.fab:hover {
-	transform: scale(1.08);
-	background: #f0141e;
-	box-shadow: 0 14px 36px rgba(229, 9, 20, 0.6);
+	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+	transition: transform 120ms ease;
 }
 
 .fab:active { transform: scale(0.95); }
 
-.fab svg { width: 30px; height: 30px; }
+.fab svg { width: 26px; height: 26px; }
 
 /* ── Card delete button ── */
 .card-delete {
@@ -541,50 +459,11 @@ main {
 	background: rgba(255, 255, 255, 0.1);
 	color: #fff;
 	border: 1px solid rgba(255, 255, 255, 0.15);
-	backdrop-filter: blur(16px);
-	-webkit-backdrop-filter: blur(16px);
 }
 
 .form-btn-submit:hover {
 	background: rgba(255, 255, 255, 0.18);
 	border-color: rgba(255, 255, 255, 0.25);
-}
-
-/* ── Reduced motion ── */
-@media (prefers-reduced-motion: reduce) {
-	.card { transition: none; }
-	.spotlight, .border-glow { transition: none; }
-}
-
-/* ── Touch devices: disable spotlight and blur for performance ── */
-@media (pointer: coarse) {
-	.spotlight,
-	.border-glow {
-		display: none;
-	}
-
-	.card {
-		backdrop-filter: none;
-		-webkit-backdrop-filter: none;
-	}
-
-
-	.modal-overlay {
-		backdrop-filter: none;
-		-webkit-backdrop-filter: none;
-	}
-
-	.modal-box {
-		backdrop-filter: none;
-		-webkit-backdrop-filter: none;
-	}
-
-
-	.form-btn-submit {
-		backdrop-filter: none;
-		-webkit-backdrop-filter: none;
-	}
-
 }
 
 /* ── Modals ── */
@@ -596,8 +475,6 @@ main {
 	align-items: center;
 	justify-content: center;
 	background: rgba(0, 0, 0, 0.7);
-	backdrop-filter: blur(6px);
-	-webkit-backdrop-filter: blur(6px);
 	opacity: 0;
 	pointer-events: none;
 	transition: opacity 200ms ease;
@@ -618,8 +495,6 @@ main {
 	position: relative;
 	background: rgba(18, 18, 28, 0.92);
 	border: 1px solid rgba(255, 255, 255, 0.1);
-	backdrop-filter: blur(24px);
-	-webkit-backdrop-filter: blur(24px);
 	border-radius: 20px;
 	padding: 2.5rem;
 	max-width: 600px;
@@ -666,16 +541,13 @@ main {
 .fab-wrap { flex-direction: row; gap: 1rem; }
 
 .fab--secondary {
-	width: 56px;
-	height: 56px;
-	background: rgba(255, 255, 255, 0.08);
+	background: var(--surface-2);
 	border: 1px solid var(--border);
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 	color: var(--muted);
 }
 
-.fab--secondary:hover { background: rgba(255, 255, 255, 0.14); color: var(--text); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }
-.fab--secondary svg { width: 24px; height: 24px; }
+.fab--secondary svg { width: 22px; height: 22px; }
 .fab--hidden { display: none; }
 body.is-editing .fab--secondary { background: #E50914; color: #fff; border-color: transparent; }
 
@@ -721,7 +593,7 @@ body.is-editing .card-delete svg { width: 14px; height: 14px; }
 .card.is-dragging,
 .category.is-dragging { opacity: 0.35; }
 
-body.is-editing .grid { min-height: 120px; border-radius: 20px; }
+body.is-editing .grid { min-height: 100px; border-radius: 14px; }
 body.is-editing .grid:empty { outline: 1px dashed rgba(255, 255, 255, 0.12); }
 
 .empty-state {
@@ -753,7 +625,17 @@ body.is-editing .grid:empty { outline: 1px dashed rgba(255, 255, 255, 0.12); }
 
 .toast.is-visible { opacity: 1; }
 
-.form-row--inline { display: flex; align-items: center; gap: 0.75rem; }
+.form-row--inline { display: flex; flex-direction: row; justify-content: flex-start; align-items: center; gap: 0.75rem; }
 .form-row--inline .form-label { margin: 0; }
 .form-btn-danger { background: rgba(229, 9, 20, 0.15); color: #fca5a5; margin-right: auto; }
 .form-btn-danger:hover { background: rgba(229, 9, 20, 0.8); color: #fff; }
+
+/* ── Touch targets: at least 48 CSS px in the car ── */
+.modal-close { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; top: 0.5rem; right: 0.5rem; }
+.form-btn { min-height: 48px; }
+.form-input { min-height: 48px; }
+.form-color { width: 48px; height: 48px; }
+.form-row--inline input[type='checkbox'] { width: 28px; height: 28px; accent-color: #E50914; }
+.form-row--inline .form-label { min-height: 48px; display: flex; align-items: center; cursor: pointer; }
+.cat-btn { min-height: 44px; padding: 0 0.9rem; }
+.toggle-switch { min-height: 48px; }

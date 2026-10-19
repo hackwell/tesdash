@@ -5,6 +5,7 @@ import { dirname, join, normalize } from 'path';
 import { load } from 'js-yaml';
 import { validateState, type DashboardState } from '../src/lib/state';
 import { extractColor } from './color';
+import { createHome, HomeError, loadHomeConfig, type TileAction } from './home';
 
 const PORT = Number(process.env.PORT ?? 3000);
 const DIST_DIR = normalize(process.env.DIST_DIR ?? join(import.meta.dir, '../dist'));
@@ -12,6 +13,9 @@ const STATE_FILE = process.env.STATE_FILE ?? '/data/state.json';
 const SEED_FILE = process.env.SEED_FILE ?? join(import.meta.dir, '../src/data/config.yml');
 const SEED_REGION = process.env.SEED_REGION ?? 'DE';
 const MAX_BODY_BYTES = 1024 * 1024;
+const HOME_CONFIG = process.env.HOME_CONFIG ?? '/app/home.json';
+const HA_URL = process.env.HA_URL ?? '';
+const HA_TOKEN = process.env.HA_TOKEN ?? '';
 
 interface StoredState extends DashboardState {
 	revision: number;
@@ -74,6 +78,10 @@ async function loadState(): Promise<StoredState> {
 
 let state = await loadState();
 
+const homeConfig = loadHomeConfig(HOME_CONFIG);
+const home = homeConfig && HA_URL && HA_TOKEN ? createHome(homeConfig, HA_URL.replace(/\/$/, ''), HA_TOKEN) : null;
+console.log(home ? `[home] ${homeConfig!.tiles.length} tiles via ${HA_URL}` : '[home] disabled (no config or HA_URL/HA_TOKEN)');
+
 function json(body: unknown, status = 200): Response {
 	return Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
 }
@@ -105,6 +113,23 @@ async function handleApi(req: Request, path: string): Promise<Response> {
 			return json(state);
 		} catch (err) {
 			return json({ error: (err as Error).message }, 400);
+		}
+	}
+
+	if (path === '/api/home' && req.method === 'GET') {
+		return json(home ? await home.snapshot() : { enabled: false });
+	}
+
+	const tileMatch = path.match(/^\/api\/home\/tiles\/([a-z0-9-]+)$/);
+	if (tileMatch && req.method === 'POST') {
+		if (!home) return json({ error: 'home disabled' }, 404);
+		try {
+			const body = (await readJson(req)) as { action?: TileAction; position?: { lat: number; lon: number } };
+			await home.act(tileMatch[1], body.action as TileAction, body.position);
+			return json({ ok: true });
+		} catch (err) {
+			if (err instanceof HomeError) return json({ error: err.message }, err.status);
+			return json({ error: 'invalid request' }, 400);
 		}
 	}
 

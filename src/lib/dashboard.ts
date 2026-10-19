@@ -1,5 +1,6 @@
 // Client side of the dashboard: renders the shared server state and writes every change back.
 import { dominantColor } from './color';
+import { toast } from './toast';
 import { launchHref, normalizeUrl, type App, type Category, type DashboardState } from './state';
 
 interface StoredState extends DashboardState {
@@ -112,9 +113,7 @@ export function initDashboard(): void {
 		iconWrap.append(fallback);
 		inner.append(iconWrap, el('p', 'app-name', app.name));
 
-		card.append(el('span', 'spotlight'), el('span', 'border-glow'), del, inner);
-		card.querySelector('.spotlight')?.setAttribute('aria-hidden', 'true');
-		card.querySelector('.border-glow')?.setAttribute('aria-hidden', 'true');
+		card.append(del, inner);
 		return card;
 	}
 
@@ -144,15 +143,6 @@ export function initDashboard(): void {
 	function render(): void {
 		container.replaceChildren(...state.categories.map(renderCategory));
 		$('empty-state').hidden = state.categories.length > 0;
-	}
-
-	let toastTimer: ReturnType<typeof setTimeout> | undefined;
-	function toast(message: string): void {
-		const node = $('toast');
-		node.textContent = message;
-		node.classList.add('is-visible');
-		clearTimeout(toastTimer);
-		toastTimer = setTimeout(() => node.classList.remove('is-visible'), 4000);
 	}
 
 	// ── Edit mode ──
@@ -400,16 +390,6 @@ export function initDashboard(): void {
 		e.preventDefault();
 		if (action === 'delete-app') deleteApp(card.dataset.id!);
 		else openAppForm(card.dataset.id!);
-	});
-
-	// Spotlight follows the mouse on desktop.
-	container.addEventListener('pointermove', (e) => {
-		if (e.pointerType !== 'mouse') return;
-		const card = (e.target as HTMLElement).closest<HTMLElement>('.card');
-		if (!card) return;
-		const rect = card.getBoundingClientRect();
-		card.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`);
-		card.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`);
 	});
 
 	// ── Drag & drop (edit mode): cards between grids, categories by their handle ──

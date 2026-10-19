@@ -21,13 +21,11 @@ const plusIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 	</head>
 
 	<body>
-		<div class="ambient" aria-hidden="true">
-			<div class="blob blob-1"></div>
-			<div class="blob blob-2"></div>
-			<div class="blob blob-3"></div>
-		</div>
-
 		<main>
+			<section class="home" id="home" hidden aria-label="Zuhause">
+				<div class="home-status" id="home-status"></div>
+				<div class="home-tiles" id="home-tiles"></div>
+			</section>
 			<div id="categories"></div>
 			<p class="empty-state" id="empty-state" hidden>Noch keine Apps. Tippe unten rechts auf den Stift und dann auf +.</p>
 		</main>
@@ -115,6 +113,8 @@ const plusIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 
 		<script>
 			import { initDashboard } from '../lib/dashboard';
+			import { initHomeBar } from '../lib/home-bar';
+			initHomeBar();
 			initDashboard();
 		</script>
 	</body>
