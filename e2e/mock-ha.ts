@@ -4,10 +4,6 @@ export const HOME = { latitude: 50.1, longitude: 8.6 };
 
 const states = new Map<string, { entity_id: string; state: string; attributes: Record<string, unknown> }>(
 	[
-		['sensor.tesla_model_y_battery_2', '36', {}],
-		['sensor.tesla_model_y_range_2', '200.91', {}],
-		['sensor.tesla_model_y_charger_power_2', '0.0', {}],
-		['weather.pirateweather', 'cloudy', { temperature: 11.4 }],
 		['cover.garagentor', 'closed', {}],
 		['light.0x00178801067e284f', 'off', {}],
 		['light.0x00178801067e2dd1', 'off', {}],

@@ -4,16 +4,6 @@ import { existsSync, readFileSync } from 'fs';
 const HA_TIMEOUT_MS = 5_000;
 const HOME_CACHE_MS = 60 * 60 * 1000;
 
-export interface StatusItem {
-	label: string;
-	entity: string;
-	/** Read this attribute instead of the state, e.g. `temperature` of a weather entity. */
-	attribute?: string;
-	unit?: string;
-	decimals?: number;
-	icon?: string;
-}
-
 export interface Tile {
 	id: string;
 	name: string;
@@ -28,7 +18,6 @@ export interface Tile {
 }
 
 export interface HomeConfig {
-	status: StatusItem[];
 	tiles: Tile[];
 }
 
@@ -56,7 +45,7 @@ export function loadHomeConfig(path: string): HomeConfig | null {
 			throw new Error(`home config: ${tile.id} needs both geofenceTracker and geofenceMeters`);
 		}
 	}
-	return { status: raw.status ?? [], tiles: raw.tiles ?? [] };
+	return { tiles: raw.tiles ?? [] };
 }
 
 /** Great-circle distance in meters. */
@@ -101,16 +90,8 @@ export function createHome(config: HomeConfig, haUrl: string, haToken: string) {
 		return home;
 	}
 
-	function formatStatus(item: StatusItem, state: HaState | undefined): string | null {
-		if (!state) return null;
-		const raw = item.attribute ? state.attributes[item.attribute] : state.state;
-		if (raw === undefined || raw === null || raw === 'unavailable' || raw === 'unknown') return null;
-		const num = Number(raw);
-		return item.decimals !== undefined && Number.isFinite(num) ? num.toFixed(item.decimals) : String(raw);
-	}
-
 	async function snapshot() {
-		const entities = new Set([...config.status.map((s) => s.entity), ...config.tiles.map((t) => t.entity)]);
+		const entities = new Set(config.tiles.map((t) => t.entity));
 		let states = new Map<string, HaState>();
 		let reachable = true;
 		try {
@@ -122,12 +103,6 @@ export function createHome(config: HomeConfig, haUrl: string, haToken: string) {
 		return {
 			enabled: true,
 			reachable,
-			status: config.status.map((item) => ({
-				label: item.label,
-				icon: item.icon ?? '',
-				value: formatStatus(item, states.get(item.entity)),
-				unit: item.unit ?? '',
-			})),
 			tiles: config.tiles.map((tile) => ({
 				id: tile.id,
 				name: tile.name,

@@ -1,7 +1,7 @@
 // Today's meetings (Flagbit + Runprise via Wellbot's export) with one-tap web join.
 import { mdiCalendarAlert, mdiMicrosoftTeams, mdiVideo } from '@mdi/js';
 import { iconSvg } from './icons';
-import { webJoinUrl } from './teams';
+import { isTeamsUrl, safeMeetingUrl, webJoinUrl } from './teams';
 
 const POLL_MS = 60_000;
 const TICK_MS = 30_000;
@@ -48,12 +48,13 @@ export function upcoming(events: CalendarEvent[], now: number): CalendarEvent[] 
 }
 
 function joinLink(event: CalendarEvent, big: boolean): HTMLAnchorElement | null {
-	if (!event.joinUrl) return null;
-	const isTeams = /teams\.(microsoft|live)\.com/.test(event.joinUrl);
+	const url = safeMeetingUrl(event.joinUrl);
+	if (!url) return null;
+	const isTeams = isTeamsUrl(url);
 	const link = document.createElement('a');
 	link.className = big ? 'cal-join' : 'cal-join cal-join--small';
 	// The car browser opens every link in its single tab, which is what we want here.
-	link.href = isTeams ? webJoinUrl(event.joinUrl) : event.joinUrl;
+	link.href = isTeams ? webJoinUrl(url.href) : url.href;
 	link.rel = 'noopener noreferrer';
 	link.append(iconSvg(isTeams ? mdiMicrosoftTeams : mdiVideo, 'cal-join-icon'));
 	if (big) link.append('Beitreten');

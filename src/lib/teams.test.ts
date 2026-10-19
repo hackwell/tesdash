@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { webJoinUrl } from './teams';
+import { safeMeetingUrl, webJoinUrl } from './teams';
 
 describe('webJoinUrl', () => {
 	it('turns a meetup-join link into a direct web-join launcher URL', () => {
@@ -16,5 +16,20 @@ describe('webJoinUrl', () => {
 		expect(webJoinUrl('https://zoom.us/j/123')).toBe('https://zoom.us/j/123');
 		expect(webJoinUrl('https://teams.microsoft.com/meet/123?p=abc')).toBe('https://teams.microsoft.com/meet/123?p=abc');
 		expect(webJoinUrl('not a url')).toBe('not a url');
+	});
+});
+
+describe('safeMeetingUrl', () => {
+	it.each([
+		['https://teams.microsoft.com/l/meetup-join/19%3a/0', true],
+		['https://flagbit.zoom.us/j/123', true],
+		['https://meet.google.com/abc-defg-hij', true],
+		['https://evil.example/teams.microsoft.com/l/meetup-join/x', false],
+		['https://teams.microsoft.com.evil.example/l/meetup-join/x', false],
+		['https://user@teams.microsoft.com/l/meetup-join/x', false],
+		['http://teams.microsoft.com/l/meetup-join/x', false],
+		['javascript:alert(1)', false],
+	])('%s -> %p', (raw, ok) => {
+		expect(safeMeetingUrl(raw) !== null).toBe(ok);
 	});
 });

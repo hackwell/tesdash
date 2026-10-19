@@ -14,6 +14,7 @@ import os
 import re
 import sys
 import tempfile
+import urllib.parse
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -26,7 +27,30 @@ BERLIN = ZoneInfo("Europe/Berlin")
 SOURCES = (("flagbit", cb.FLAGBIT), ("runprise", cb.RUNPRISE))
 # Same noise filter as Wellbot's termin_watch.py.
 JUNK_SUBJECTS = {"Andere Zeitzone – nicht verfügbar", "Abwesend – andere Zeitzone"}
-MEETING_URL = re.compile(r"https://[^\s<>\"']*(teams\.microsoft\.com/l/meetup-join|teams\.microsoft\.com/meet|teams\.live\.com|zoom\.us/j|meet\.google\.com)[^\s<>\"']*")
+URL_CANDIDATE = re.compile(r"https://[^\s<>\"']+")
+# (exact host or parent domain, required path prefix). Anything else is not offered as a join button.
+MEETING_HOSTS = (
+    ("teams.microsoft.com", "/l/meetup-join/"),
+    ("teams.microsoft.com", "/meet/"),
+    ("teams.live.com", "/meet/"),
+    ("meet.google.com", "/"),
+    ("zoom.us", "/j/"),
+)
+
+
+def meeting_url(candidate):
+    """The candidate if it is an https link to a known meeting service, else None."""
+    try:
+        parsed = urllib.parse.urlsplit(candidate)
+    except ValueError:
+        return None
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme != "https" or parsed.username or parsed.password:
+        return None
+    for allowed, prefix in MEETING_HOSTS:
+        if (host == allowed or host.endswith("." + allowed)) and parsed.path.startswith(prefix):
+            return candidate
+    return None
 
 
 def utc_iso(field):
@@ -36,14 +60,15 @@ def utc_iso(field):
 
 
 def join_url(event):
-    url = (event.get("onlineMeeting") or {}).get("joinUrl")
+    url = meeting_url((event.get("onlineMeeting") or {}).get("joinUrl") or "")
     if url:
         return url
     # External invitations carry the link only in the body or location.
     for text in ((event.get("location") or {}).get("displayName"), (event.get("body") or {}).get("content")):
-        match = MEETING_URL.search(html.unescape(text or ""))
-        if match:
-            return match.group(0)
+        for candidate in URL_CANDIDATE.findall(html.unescape(text or "")):
+            url = meeting_url(candidate)
+            if url:
+                return url
     return None
 
 

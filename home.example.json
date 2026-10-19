@@ -1,17 +1,31 @@
 {
-	"status": [
-		{ "label": "Akku", "icon": "battery", "entity": "sensor.tesla_model_y_battery_2", "unit": "%" },
-		{ "label": "Reichweite", "icon": "range", "entity": "sensor.tesla_model_y_range_2", "unit": "km", "decimals": 0 },
-		{ "label": "Laden", "icon": "charging", "entity": "sensor.tesla_model_y_charger_power_2", "unit": "kW", "decimals": 1 },
-		{ "label": "Außen", "icon": "temperature", "entity": "weather.pirateweather", "attribute": "temperature", "unit": "°C", "decimals": 0 }
-	],
 	"tiles": [
 		{
-			"id": "garage", "name": "Garage", "entity": "cover.garagentor", "icon": "garage", "hold": true,
-			"geofenceTracker": "device_tracker.tesla_model_y_location_tracker_2", "geofenceMeters": 300
+			"id": "garage",
+			"name": "Garage",
+			"entity": "cover.garagentor",
+			"icon": "garage",
+			"hold": true,
+			"geofenceTracker": "device_tracker.tesla_model_y_location_tracker_2",
+			"geofenceMeters": 300
 		},
-		{ "id": "licht-garage", "name": "Licht Garage", "entity": "light.0x00178801067e284f", "icon": "outdoor-lamp" },
-		{ "id": "licht-haus", "name": "Licht Haus", "entity": "light.0x00178801067e2dd1", "icon": "house-light" },
-		{ "id": "licht-aussen", "name": "Licht außen", "entity": "light.aussenbeleuchtung", "icon": "light" }
+		{
+			"id": "licht-garage",
+			"name": "Licht Garage",
+			"entity": "light.0x00178801067e284f",
+			"icon": "outdoor-lamp"
+		},
+		{
+			"id": "licht-haus",
+			"name": "Licht Haus",
+			"entity": "light.0x00178801067e2dd1",
+			"icon": "house-light"
+		},
+		{
+			"id": "licht-aussen",
+			"name": "Licht außen",
+			"entity": "light.aussenbeleuchtung",
+			"icon": "light"
+		}
 	]
 }

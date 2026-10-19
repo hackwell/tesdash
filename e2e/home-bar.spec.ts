@@ -26,15 +26,11 @@ async function hold(page: Page, selector: string, ms: number) {
 
 test.describe.configure({ mode: 'serial' });
 
-test('shows car status and house tiles', async ({ browser }) => {
+test('shows house tiles with icons', async ({ browser }) => {
 	const { context, page } = await open(browser);
-	await expect(page.locator('#home-status')).toContainText('Akku36 %');
-	await expect(page.locator('#home-status')).toContainText('Reichweite201 km');
-	await expect(page.locator('#home-status')).toContainText('Außen11 °C');
 	await expect(page.locator('.home-tile[data-id=garage]')).toContainText('Geschlossen');
 	await expect(page.locator('.home-tile[data-id=garage]')).toContainText('Halten zum Öffnen');
 	await expect(page.locator('.home-tile .home-tile-icon')).toHaveCount(4);
-	await expect(page.locator('.home-status .home-status-icon')).toHaveCount(4);
 	await context.close();
 });
 

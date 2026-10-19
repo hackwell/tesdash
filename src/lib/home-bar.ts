@@ -1,5 +1,5 @@
-// House controls and car status from Home Assistant, rendered above the app grid.
-import { statusIcon, tileIcon } from './icons';
+// House controls from Home Assistant, rendered above the app grid.
+import { tileIcon } from './icons';
 import { toast } from './toast';
 
 const POLL_MS = 15_000;
@@ -17,7 +17,6 @@ interface HomeTile {
 interface HomeSnapshot {
 	enabled: boolean;
 	reachable?: boolean;
-	status?: { label: string; icon: string; value: string | null; unit: string }[];
 	tiles?: HomeTile[];
 }
 
@@ -63,21 +62,12 @@ export function initHomeBar(): void {
 		root.hidden = !snap.enabled;
 		if (!snap.enabled) return;
 
-		const items = (snap.status ?? []).filter((s) => s.value !== null).map((s) => {
-			const item = document.createElement('span');
-			const icon = statusIcon(s.icon, s.value);
-			if (icon) item.append(icon);
-			item.append(s.label);
-			const value = document.createElement('b');
-			value.textContent = `${s.value}${s.unit ? ` ${s.unit}` : ''}`;
-			item.append(value);
-			return item;
-		});
+		const items: HTMLElement[] = [];
 		if (snap.reachable === false) {
 			const offline = document.createElement('span');
 			offline.className = 'home-offline';
 			offline.textContent = 'Home Assistant nicht erreichbar';
-			items.unshift(offline);
+			items.push(offline);
 		}
 		statusRow.replaceChildren(...items);
 

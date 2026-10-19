@@ -156,8 +156,10 @@ main {
 	.app-name { font-size: 0.9rem; }
 }
 
-/* ── Home bar: car status + house controls ── */
+/* ── Home bar: house controls ── */
 .home { margin-bottom: 1.25rem; }
+
+.home-status:empty { display: none; }
 
 .home-status {
 	display: flex;
@@ -168,7 +170,6 @@ main {
 	margin-bottom: 0.6rem;
 }
 
-.home-status b { color: var(--text); font-weight: 600; margin-left: 0.3rem; }
 .home-status .home-offline { color: var(--open); }
 
 .home-tiles {
@@ -649,8 +650,6 @@ body.is-editing .grid:empty { outline: 1px dashed rgba(255, 255, 255, 0.12); }
 .home-tile[data-state='opening'] .home-tile-icon,
 .home-tile[data-state='closing'] .home-tile-icon { color: var(--open); }
 .home-tile[data-state='closed'] .home-tile-icon { color: var(--closed); }
-.home-status > span { display: inline-flex; align-items: center; }
-.home-status-icon { width: 18px; height: 18px; margin-right: 0.3rem; color: var(--muted); }
 
 /* ── Calendar: today's meetings ── */
 .calendar { margin-bottom: 1rem; }
