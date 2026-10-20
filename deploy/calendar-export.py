@@ -3,8 +3,11 @@
 calendar-export.py — writes today's meetings (Flagbit + Runprise) for tesla.weller.cc.
 
 Runs as user `wellbot` (systemd timer tesla-calendar-export) and reads both
-calendars through Wellbot's calendar_bridge, with its self-refreshing Graph
-tokens. Writes only what the dashboard needs (subject, times, location, join
+calendars: Flagbit through Wellbot's calendar_bridge (self-refreshing user
+token), Runprise through the app-only registration "tesla-calendar"
+(Calendars.Read, limited to Joerg's mailbox by an Exchange application access
+policy) — Runprise's security defaults reject refreshing a user token from
+the server. Writes only what the dashboard needs (subject, times, location, join
 link, source) to /opt/tesdash/calendar/today.json. The tokens never leave
 Wellbot; the dashboard container mounts the output directory read-only.
 """
@@ -15,6 +18,7 @@ import re
 import sys
 import tempfile
 import urllib.parse
+import urllib.request
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -24,7 +28,40 @@ import calendar_bridge as cb  # noqa: E402
 OUT_DIR = "/opt/tesdash/calendar"
 OUT_FILE = os.path.join(OUT_DIR, "today.json")
 BERLIN = ZoneInfo("Europe/Berlin")
-SOURCES = (("flagbit", cb.FLAGBIT), ("runprise", cb.RUNPRISE))
+RUNPRISE_APP = "/opt/tesdash/runprise-app.json"
+EVENT_FIELDS = ("id,iCalUId,subject,start,end,isAllDay,isCancelled,showAs,"
+                "organizer,attendees,responseStatus,body,onlineMeeting,location")
+
+
+def runprise_app_events(von, bis):
+    """calendarView of the configured mailbox via client credentials (no user token, no MFA)."""
+    with open(RUNPRISE_APP) as f:
+        app = json.load(f)
+    form = urllib.parse.urlencode({
+        "grant_type": "client_credentials",
+        "client_id": app["client_id"],
+        "client_secret": app["client_secret"],
+        "scope": "https://graph.microsoft.com/.default",
+    }).encode()
+    token_url = f"https://login.microsoftonline.com/{app['tenant_id']}/oauth2/v2.0/token"
+    with urllib.request.urlopen(urllib.request.Request(token_url, data=form), timeout=30) as res:
+        token = json.loads(res.read())["access_token"]
+    query = urllib.parse.urlencode({
+        "startDateTime": von, "endDateTime": bis, "$select": EVENT_FIELDS,
+        "$orderby": "start/dateTime", "$top": "200",
+    })
+    req = urllib.request.Request(
+        f"https://graph.microsoft.com/v1.0/users/{urllib.parse.quote(app['mailbox'])}/calendarView?{query}",
+        headers={"Authorization": f"Bearer {token}", "Prefer": 'outlook.timezone="W. Europe Standard Time"'},
+    )
+    with urllib.request.urlopen(req, timeout=30) as res:
+        return json.loads(res.read()).get("value", [])
+
+
+SOURCES = (
+    ("flagbit", lambda von, bis: cb.termine(cb.FLAGBIT, von, bis)),
+    ("runprise", runprise_app_events),
+)
 # Same noise filter as Wellbot's termin_watch.py.
 JUNK_SUBJECTS = {"Andere Zeitzone – nicht verfügbar", "Abwesend – andere Zeitzone"}
 URL_CANDIDATE = re.compile(r"https://[^\s<>\"']+")
@@ -89,9 +126,9 @@ def todays_events():
     von = start.strftime("%Y-%m-%dT%H:%M:%S")
     bis = (start + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
     events, errors = [], []
-    for source, token_path in SOURCES:
+    for source, fetch in SOURCES:
         try:
-            raw = cb.termine(token_path, von, bis)
+            raw = fetch(von, bis)
         except BaseException as err:  # calendar_bridge raises SystemExit when a token cannot be refreshed
             # A dead source must show up as an error, not as an empty calendar.
             errors.append(source)
