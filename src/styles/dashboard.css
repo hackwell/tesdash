@@ -762,3 +762,12 @@ body.is-editing .grid:empty { outline: 1px dashed rgba(255, 255, 255, 0.12); }
 }
 .logo-suggest-item img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .logo-suggest-item.is-selected { border-color: #E50914; background: var(--surface-2); }
+
+/* Meeting details row (duration, organiser, attendees, location, own answer) */
+.cal-details { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; margin-top: 0.2rem; font-size: 0.8rem; color: var(--muted); }
+.cal-detail { display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
+.cal-detail-icon { width: 16px; height: 16px; flex-shrink: 0; }
+.cal-detail--attention { color: var(--open); }
+.cal-detail--compact { font-size: 0.8rem; color: var(--muted); flex-shrink: 0; }
+.cal-subject-small { flex: 1; }
+.cal-list li .cal-join--small { margin-left: 0.25rem; }

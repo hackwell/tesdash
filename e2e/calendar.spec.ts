@@ -18,7 +18,8 @@ test.afterAll(() => rmSync(FILE, { force: true }));
 test('next meeting with a direct Teams web-join button, later ones listed', async ({ page }) => {
 	writeCalendar([
 		{ subject: 'Vorbei', start: iso(-120), end: iso(-60), location: '', joinUrl: TEAMS, tentative: false, source: 'flagbit' },
-		{ subject: 'Daily', start: iso(12), end: iso(27), location: '', joinUrl: TEAMS, tentative: false, source: 'runprise' },
+		{ subject: 'Daily', start: iso(12), end: iso(27), location: '', joinUrl: TEAMS, tentative: false, source: 'runprise',
+			organizer: 'Paul Eckhardt', isOrganizer: false, myResponse: 'notResponded', attendees: { total: 6, accepted: 4, tentative: 0, declined: 1 } },
 		{ subject: 'Kunde vor Ort', start: iso(180), end: iso(240), location: 'Büro', joinUrl: null, tentative: false, source: 'flagbit' },
 	]);
 	await page.goto('/');
@@ -26,6 +27,10 @@ test('next meeting with a direct Teams web-join button, later ones listed', asyn
 	await expect(next).toContainText('Daily');
 	await expect(next).toContainText(/in 1[12] min/);
 	await expect(next).toContainText('Runprise');
+	await expect(next.locator('.cal-details')).toContainText('15 min');
+	await expect(next.locator('.cal-details')).toContainText('Paul Eckhardt');
+	await expect(next.locator('.cal-details')).toContainText('6 Teilnehmer · 4 zugesagt · 1 abgesagt');
+	await expect(next.locator('.cal-details')).toContainText('nicht beantwortet');
 	const href = await next.locator('.cal-join').getAttribute('href');
 	const url = new URL(href!);
 	expect(url.pathname).toBe('/dl/launcher/launcher.html');

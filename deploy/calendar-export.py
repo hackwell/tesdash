@@ -72,6 +72,18 @@ def join_url(event):
     return None
 
 
+def attendee_summary(event):
+    """Counts without names: people only (no rooms), split by their answer."""
+    people = [a for a in event.get("attendees") or [] if a.get("type") != "resource"]
+    answers = [((a.get("status") or {}).get("response") or "none") for a in people]
+    return {
+        "total": len(people),
+        "accepted": answers.count("accepted"),
+        "tentative": answers.count("tentativelyAccepted"),
+        "declined": answers.count("declined"),
+    }
+
+
 def todays_events():
     start = datetime.now(BERLIN).replace(hour=0, minute=0, second=0, microsecond=0)
     von = start.strftime("%Y-%m-%dT%H:%M:%S")
@@ -98,6 +110,10 @@ def todays_events():
                 "joinUrl": join_url(e),
                 "tentative": e.get("showAs") == "tentative",
                 "source": source,
+                "organizer": ((e.get("organizer") or {}).get("emailAddress") or {}).get("name") or "",
+                "isOrganizer": (e.get("responseStatus") or {}).get("response") == "organizer",
+                "myResponse": (e.get("responseStatus") or {}).get("response") or "none",
+                "attendees": attendee_summary(e),
             })
     events.sort(key=lambda ev: ev["start"])
     return events, errors
