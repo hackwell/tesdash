@@ -796,3 +796,18 @@ body.is-editing .grid:empty { outline: 1px dashed rgba(255, 255, 255, 0.12); }
 .cal-detail--compact { font-size: 0.8rem; color: var(--muted); flex-shrink: 0; }
 .cal-subject-small { flex: 1; }
 .cal-list li .cal-join--small { margin-left: 0.25rem; }
+
+/* ── Glass surfaces over the live map (overrides the flat surfaces above) ──
+   One blur layer per tile; the map behind barely changes, so the car's GPU only re-blurs on recentre. */
+.card,
+.home-tile,
+.cal-next,
+.fab--secondary {
+	background: rgba(28, 29, 33, 0.5);
+	border-color: rgba(255, 255, 255, 0.14);
+	-webkit-backdrop-filter: blur(12px) saturate(1.4);
+	backdrop-filter: blur(12px) saturate(1.4);
+}
+
+.card:active,
+.home-tile:active { background: rgba(38, 39, 44, 0.7); }
