@@ -31,18 +31,42 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
 
 /* ── Live map background (Waze embed, recoloured dark; not interactive) ──
-   The iframe is taller than the viewport so Waze's header and search box (top) and its cookie banner and
-   controls (bottom) fall outside the screen; they cannot be dismissed with pointer-events off. */
+   The embed is north-up only, so the iframe is turned heading-up with --map-rotation (set by map-background.ts)
+   around its centre, where the car is. It is a square big enough that the viewport stays covered at any angle:
+   half its side ≥ distance from the car to the farthest viewport corner + 460 px, so Waze's header and search box
+   and its cookie banner and controls (up to 460 px from the iframe's edges) stay off screen whichever edge faces in;
+   they cannot be dismissed with pointer-events off. The car sits 100 px below the viewport centre (more road ahead). */
 .bg-map {
+	/* Fallback without hypot(): W/2 + H/2 + 100 px ≥ the corner distance. */
+	--map-size: calc(100vw + 100vh + 1120px);
 	position: fixed;
-	top: -260px;
-	left: 0;
+	top: calc(50vh + 100px - var(--map-size) / 2);
+	left: calc(50vw - var(--map-size) / 2);
 	z-index: -2;
-	width: 100%;
-	height: calc(100% + 720px);
+	width: var(--map-size);
+	height: var(--map-size);
 	border: 0;
 	pointer-events: none;
 	filter: invert(1) hue-rotate(180deg) brightness(0.95);
+	transform: rotate(var(--map-rotation, 0deg));
+	/* Position updates arrive about once a second; a linear 1 s turn joins them into one smooth motion. */
+	transition: transform 1s linear;
+}
+
+@supports (width: hypot(1px, 1px)) {
+	.bg-map { --map-size: calc(2 * hypot(50vw, 50vh + 100px) + 920px); }
+}
+
+/* Our own car marker: Waze's pin would turn with the map, this one always points up (direction of travel). */
+.bg-map-car {
+	position: absolute;
+	top: calc(50% + 100px);
+	left: 50%;
+	width: 18px;
+	height: 22px;
+	transform: translate(-50%, -50%);
+	background: #3e9bff;
+	clip-path: polygon(50% 0, 100% 100%, 50% 75%, 0 100%);
 }
 
 .bg-map-shade {
