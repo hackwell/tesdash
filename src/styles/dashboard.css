@@ -30,6 +30,31 @@ body {
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
 
+/* ── Live map background (Waze embed, recoloured dark; not interactive) ──
+   The iframe is taller than the viewport so Waze's header and search box (top) and its cookie banner and
+   controls (bottom) fall outside the screen; they cannot be dismissed with pointer-events off. */
+.bg-map {
+	position: fixed;
+	top: -260px;
+	left: 0;
+	z-index: -2;
+	width: 100%;
+	height: calc(100% + 720px);
+	border: 0;
+	pointer-events: none;
+	filter: invert(1) hue-rotate(180deg) brightness(0.95);
+}
+
+.bg-map-shade {
+	position: fixed;
+	inset: 0;
+	z-index: -1;
+	pointer-events: none;
+	background: rgba(17, 18, 21, 0.25);
+}
+
+.bg-map[hidden] + .bg-map-shade { display: none; }
+
 /* ── Layout: designed for the car's 773 × 601 split view first ── */
 main {
 	max-width: 1400px;
