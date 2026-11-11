@@ -282,6 +282,8 @@ async function handle(req: Request, server: Parameters<typeof clientIp>[1]): Pro
 	const pathname = canonicalPath(new URL(req.url).pathname);
 	if (!pathname) return new Response('Bad request', { status: 400 });
 
+	// Liveness for the container health check (Coolify); reveals nothing and needs no device cookie.
+	if (pathname === '/healthz') return new Response('ok', { headers: { 'Cache-Control': 'no-store' } });
 	if (under(pathname, '/api/admin')) return handleAdminApi(req, pathname);
 	if (under(pathname, '/api/pair')) return (await handlePairApi(req, pathname, clientIp(req, server))) ?? json({ error: 'not found' }, 404);
 	if (under(pathname, '/admin')) {

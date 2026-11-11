@@ -18,6 +18,10 @@ test('an unpaired car is sent to the QR-code page and gets nothing from the API'
 	const { href, code } = await carPairing(page);
 	expect(href).not.toContain(code); // the QR link alone cannot approve
 	expect((await request.get('/api/state')).status()).toBe(401);
+	// The health check works without pairing and reveals nothing.
+	const health = await request.get('/healthz');
+	expect(health.status()).toBe(200);
+	expect(await health.text()).toBe('ok');
 	expect((await request.get('/api/calendar')).status()).toBe(401);
 	expect((await request.post('/api/home/tiles/garage', { data: { action: 'open' } })).status()).toBe(401);
 });
