@@ -24,21 +24,21 @@ describe('distanceMeters', () => {
 
 describe('shouldRecenter', () => {
 	const home = { lat: 49, lon: 8 };
-	const far = { lat: 49.02, lon: 8 }; // ~2.2 km north
+	const block = { lat: 49.001, lon: 8 }; // ~110 m north
 
 	it('always centres the first fix', () => {
 		expect(shouldRecenter(null, 0, home, 1_000)).toBe(true);
 	});
 
-	it('ignores small moves', () => {
-		expect(shouldRecenter(home, 0, { lat: 49.001, lon: 8 }, 120_000)).toBe(false);
+	it('ignores GPS jitter below 50 m', () => {
+		expect(shouldRecenter(home, 0, { lat: 49.0003, lon: 8 }, 120_000)).toBe(false);
 	});
 
-	it('waits at least a minute between reloads', () => {
-		expect(shouldRecenter(home, 100_000, far, 130_000)).toBe(false);
+	it('waits at least 10 s between reloads', () => {
+		expect(shouldRecenter(home, 100_000, block, 109_000)).toBe(false);
 	});
 
-	it('recentres after a long enough move and pause', () => {
-		expect(shouldRecenter(home, 0, far, 61_000)).toBe(true);
+	it('follows the car after a street block of driving', () => {
+		expect(shouldRecenter(home, 0, block, 10_000)).toBe(true);
 	});
 });
